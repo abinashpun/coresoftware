@@ -189,7 +189,9 @@ int RawClusterBuilderv1::process_event(PHCompositeNode *topNode)
 	// that code needs a closer look - here are the towers 
 	// with their energy added to the cluster object where 
 	// the id is the tower id
-	RawTowerDefs::keytype twrkey = RawTowerDefs::encode_towerid( RawTowerDefs::NONE , ieta , iphi );
+	//	RawTowerDefs::keytype twrkey = RawTowerDefs::encode_towerid( RawTowerDefs::NONE , ieta , iphi );
+	RawTowerDefs::keytype twrkey = RawTowerDefs::encode_towerid( towers->getCalorimeterID() , ieta , iphi );
+
 	cluster->addTower(twrkey,(*ph).amp/fEnergyNorm);
 	++ph;
       }
