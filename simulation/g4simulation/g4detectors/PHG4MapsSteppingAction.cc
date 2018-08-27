@@ -1,5 +1,6 @@
 #include "PHG4MapsSteppingAction.h"
 #include "PHG4MapsDetector.h"
+#include "PHG4CylinderGeom_MAPS.h"
 
 #include <g4main/PHG4HitContainer.h>
 #include <g4main/PHG4Hit.h>
@@ -7,7 +8,6 @@
 #include <g4main/PHG4TrackUserInfoV1.h>
 #include <g4main/PHG4Shower.h>
 
-#include "PHG4CylinderGeom_MAPS.h"
 #include <phool/getClass.h>
 
 #include <Geant4/G4Step.hh>
@@ -40,7 +40,7 @@ PHG4MapsSteppingAction::PHG4MapsSteppingAction( PHG4MapsDetector* detector ):
 {
 //  cout << "PHG4MapsSteppingAction created" << endl;
 
-  //verbosity = 3;
+  //Verbosity(3);
 }
 
 //____________________________________________________________________________..
@@ -56,15 +56,34 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
   //  0 if outside of Maps
   //  1 if inside sensor
 
-  // This checks to see if the string "ITSUSensor[layer number]" is contained in the volume name
-  int whichactive = detector_->IsInMaps(sensor_volume);
+  // This checks if the volume is a sensor (doesn't tell us unique layer)
+  // PHG4MapsTelescopeDetector_->IsSensor(volume)
+  // returns
+  //  1 if volume is a sensor
+  //  0 if not
+  int whichactive = detector_->IsSensor(sensor_volume);
 
   if (!whichactive)
-    {
-      return false;
-    }
+  {
+    return false;
+  }
 
-  if(verbosity > 5)
+  // This tells us if the volume belongs to the right stave for this layer
+  // From the GDML file the 3rd volume up should be the half-stave
+  // PHG4MapsTelescopeDetector_->IsInMaps(volume)
+  // returns
+  //  1 if in ladder belonging to this layer
+  //  0 if not
+  G4VPhysicalVolume* vstave = touch->GetVolume(3);
+  whichactive = detector_->IsInMaps(vstave);
+
+
+  if (!whichactive)
+  {
+    return false;
+  }
+
+  if(Verbosity() > 5)
     {
       // make sure we know where we are!
       G4VPhysicalVolume* vtest = touch->GetVolume();
@@ -94,23 +113,24 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
   int module_number = -1;
   int chip_number = -1;
 
-  if(verbosity > 0) cout << endl << "  UserSteppingAction: layer " << detector_->get_Layer();
+  if(Verbosity() > 0) cout << endl << "  UserSteppingAction: layer " << detector_->get_Layer();
   boost::char_separator<char> sep("_");
   boost::tokenizer<boost::char_separator<char> >::const_iterator tokeniter;
 
-  // chip number is from  "ITSUChip[layer number]_[chip number]
+  //OLD ITS.gdml: chip number is from  "ITSUChip[layer number]_[chip number]
+  //NEW: chip number is from  "MVTXChip_[chip number]
   G4VPhysicalVolume* v1 = touch->GetVolume(1);
   boost::tokenizer<boost::char_separator<char> > tok1(v1->GetName(), sep);
   tokeniter = tok1.begin();
   ++tokeniter;
   chip_number = boost::lexical_cast<int>(*tokeniter);
-  if(verbosity > 0) cout << " chip  " << chip_number;
+  if(Verbosity() > 0) cout << " chip  " << chip_number;
   G4VPhysicalVolume* v2 = touch->GetVolume(2);
   boost::tokenizer<boost::char_separator<char> > tok2(v2->GetName(), sep);
   tokeniter = tok2.begin();
   ++tokeniter;
   module_number = boost::lexical_cast<int>(*tokeniter);
-  if(verbosity > 0) cout << " module " << module_number;
+  if(Verbosity() > 0) cout << " module " << module_number;
 
   // The stave number  is the imprint number from the assembly volume imprint
   // The assembly volume history string format is (e.g.):
@@ -125,12 +145,12 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
   ++tokeniter;
   ++tokeniter;
   stave_number = boost::lexical_cast<int>(*tokeniter) - 1;   // starts counting imprints at 1, we count staves from 0!
-  if(verbosity > 0) cout << " stave " << stave_number;
+  if(Verbosity() > 0) cout << " stave " << stave_number;
   ++tokeniter;
   ++tokeniter;
   ++tokeniter;
   half_stave_number = boost::lexical_cast<int>(*tokeniter);
-  if(verbosity > 0) cout << " half_stave " << half_stave_number;
+  if(Verbosity() > 0) cout << " half_stave " << half_stave_number;
 
   // FYI: doing string compares inside a stepping action sounds like a recipe
   // for failure inside a heavy ion event... we'll wait and see how badly
@@ -140,7 +160,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
   
   G4double edep = aStep->GetTotalEnergyDeposit() / GeV;
   const G4Track* aTrack = aStep->GetTrack();
-  if(verbosity > 0)  cout << " edep = " << edep << endl;
+  if(Verbosity() > 0)  cout << " edep = " << edep << endl;
 
   // if this cylinder stops everything, just put all kinetic energy into edep
   if (detector_->IsBlackHole())
@@ -173,7 +193,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
       G4StepPoint * prePoint = aStep->GetPreStepPoint();
       G4StepPoint * postPoint = aStep->GetPostStepPoint();
 
-      if(verbosity > 0)
+      if(Verbosity() > 0)
 	{
 	  G4ParticleDefinition* def = aTrack->GetDefinition();
 	  cout << " Particle: " << def->GetParticleName() << endl;
@@ -196,7 +216,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
 
 	  worldPosition = prePoint->GetPosition();
 
-	  if(verbosity > 0)
+	  if(Verbosity() > 0)
 	    {
 	      theTouchable = prePoint->GetTouchableHandle(); 
 	      cout << "entering: depth = " << theTouchable->GetHistory()->GetDepth() <<  endl;
@@ -209,8 +229,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
 	  */
 
 	  // Store the local coordinates for the entry point 
-	  // Note the typo in Coordinate is needed!
-	  StoreLocalCoorindate(hit, aStep, true, false);
+	  StoreLocalCoordinate(hit, aStep, true, false);
 	  
 	  // Store the entrance values in cm in world coordinates
 	  hit->set_x( 0, prePoint->GetPosition().x() / cm );
@@ -275,10 +294,10 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
       //======================================================================================
       theTouchable = prePoint->GetTouchableHandle(); 
       vol2 = theTouchable->GetVolume();
-      if(verbosity > 0)
+      if(Verbosity() > 0)
 	cout << "exiting volume name = " << vol2->GetName() << endl;
       worldPosition = prePoint->GetPosition();
-      if(verbosity > 0)
+      if(Verbosity() > 0)
 	cout << "Exit world coords prePoint: x " <<  worldPosition.x() / cm << " y " <<  worldPosition.y() / cm << " z " <<  worldPosition.z() / cm << endl;
 
       // This is for consistency with the local coord position, the world coordinate exit position is correct
@@ -296,7 +315,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
       */
 
       // Store the local coordinates for the exit point
-      StoreLocalCoorindate(hit, aStep, false, true);
+      StoreLocalCoordinate(hit, aStep, false, true);
 
        // Store world coordinates for the exit point
       hit->set_x( 1, postPoint->GetPosition().x() / cm );
@@ -326,7 +345,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
 	}
 
 
-      if(verbosity>0)
+      if(Verbosity()>0)
 	{  
 	  G4StepPoint * prePoint = aStep->GetPreStepPoint();
 	  G4StepPoint * postPoint = aStep->GetPostStepPoint();
@@ -344,7 +363,7 @@ bool PHG4MapsSteppingAction::UserSteppingAction( const G4Step* aStep, bool )
 	}
 
 
-      if(verbosity>0)
+      if(Verbosity()>0)
 	{  
 	  cout << "  stepping action found hit:" << endl;
 	  hit->print(); 
@@ -390,7 +409,7 @@ void PHG4MapsSteppingAction::SetInterfacePointers( PHCompositeNode* topNode )
     }
   if ( ! absorberhits_)
     {
-      if (verbosity > 0)
+      if (Verbosity() > 0)
 	{
 	  cout << "PHG4MapsSteppingAction::SetTopNode - unable to find " << absorbernodename << endl;
 	}

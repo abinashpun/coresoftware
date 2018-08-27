@@ -2,6 +2,7 @@
 #include "PHPy6GenTrigger.h"
 
 #include <phhepmc/PHHepMCGenEvent.h>
+#include <phhepmc/PHHepMCGenEventMap.h>
 
 #include <fun4all/Fun4AllReturnCodes.h>
 
@@ -35,6 +36,9 @@
 #include <algorithm>
 #include <cctype>
 
+#define pytune pytune_
+extern "C" int  pytune(int *itune);
+
 using namespace std;
 
 typedef PHIODataNode<PHObject> PHObjectNode_t;
@@ -43,16 +47,14 @@ PHPythia6::PHPythia6(const std::string &name):
   SubsysReco(name),
   _eventcount(0),
   _geneventcount(0),
-  _node_name("PHHepMCGenEvent"),
   _configFile("phpythia6.cfg"),
-  _phhepmcevt(NULL),
   _save_ascii( false ),
   _filename_ascii("pythia_hepmc.dat"),
   _registeredTriggers(),
   _triggersOR(true),
   _triggersAND(false){
 
-  //RandomGenerator = gsl_rng_alloc(gsl_rng_mt19937);
+  hepmc_helper.set_embedding_id(1); // default embedding ID to 1
 }
 
 PHPythia6::~PHPythia6() {
@@ -308,6 +310,13 @@ int PHPythia6::ReadConfig(const string cfg_file) {
       pydat2.pmas[index-1][idc-1] = value; 
       cout << "pmas\t" << idc << " " << index << " " << value << endl;
     }
+    else if ( label == "pytune" )
+    {
+      int ivalue; 
+      line >> ivalue;
+      pytune(&ivalue);
+      cout << "pytune\t" << ivalue << endl;
+    }
      else
       {
 	// label was not understood
@@ -373,6 +382,15 @@ int PHPythia6::process_event(PHCompositeNode *topNode) {
     // set cross section information
     evt->set_cross_section( HepMC::getPythiaCrossSection() );
 
+    // Set the PDF information
+    HepMC::PdfInfo pdfinfo;
+    pdfinfo.set_x1(pypars.pari[33-1]); 
+    pdfinfo.set_x2(pypars.pari[34-1]); 
+    pdfinfo.set_scalePDF(pypars.pari[22-1]);
+    pdfinfo.set_id1(pypars.msti[15-1]); 
+    pdfinfo.set_id2(pypars.msti[16-1]);  
+    evt->set_pdf_info(pdfinfo); 
+
     // test trigger logic
     
     bool andScoreKeeper = true;
@@ -420,12 +438,11 @@ int PHPythia6::process_event(PHCompositeNode *topNode) {
 
   /* pass HepMC to PHNode*/
 
-  bool success = _phhepmcevt->addEvent(evt);
+  PHHepMCGenEvent * success = hepmc_helper . insert_event(evt);
   if (!success) {
     cout << "PHPythia6::process_event - Failed to add event to HepMC record!" << endl;
     return Fun4AllReturnCodes::ABORTRUN;
   }
-
   /* print outs*/
   if (verbosity > 2) cout << "PHPythia6::process_event - FINISHED WHOLE EVENT" << endl;
 
@@ -435,18 +452,7 @@ int PHPythia6::process_event(PHCompositeNode *topNode) {
 
 int PHPythia6::CreateNodeTree(PHCompositeNode *topNode) {
 
-  PHCompositeNode *dstNode;
-  PHNodeIterator iter(topNode);
-
-  dstNode = dynamic_cast<PHCompositeNode*>(iter.findFirst("PHCompositeNode", "DST"));
-  if (!dstNode) {
-    cout << PHWHERE << "DST Node missing doing nothing" << endl;
-    return Fun4AllReturnCodes::ABORTRUN;
-  }
-
-  _phhepmcevt = new PHHepMCGenEvent();
-  PHObjectNode_t *newNode = new PHObjectNode_t(_phhepmcevt,_node_name.c_str(),"PHObject");
-  dstNode->addNode(newNode);
+  hepmc_helper.create_node_tree(topNode);
 
   return Fun4AllReturnCodes::EVENT_OK;
 }

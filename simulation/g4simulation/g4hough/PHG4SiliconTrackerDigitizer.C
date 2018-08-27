@@ -4,14 +4,15 @@
 #include "SvtxHitMap_v1.h"
 #include "SvtxHit.h"
 #include "SvtxHit_v1.h"
+#include "SvtxDeadMap.h"
 
 #include <fun4all/Fun4AllReturnCodes.h>
 #include <phool/PHCompositeNode.h>
 #include <phool/PHIODataNode.h>
 #include <phool/PHNodeIterator.h>
 #include <phool/getClass.h>
-#include <g4detectors/PHG4CylinderCellContainer.h>
-#include <g4detectors/PHG4CylinderCell.h>
+#include <g4detectors/PHG4CellContainer.h>
+#include <g4detectors/PHG4Cell.h>
 #include <g4detectors/PHG4CylinderCellGeomContainer.h>
 #include <g4detectors/PHG4CylinderCellGeom.h>
 #include <g4detectors/PHG4CylinderGeomContainer.h>
@@ -25,7 +26,10 @@ using namespace std;
 PHG4SiliconTrackerDigitizer::PHG4SiliconTrackerDigitizer(const string &name) :
   SubsysReco(name),
   _hitmap(NULL),
-  _timer(PHTimeServer::get()->insert_new(name)) {
+  _timer(PHTimeServer::get()->insert_new(name)),
+  m_nCells(0),
+  m_nDeadCells(0)
+{
 }
 
 int PHG4SiliconTrackerDigitizer::InitRun(PHCompositeNode* topNode) {
@@ -110,7 +114,7 @@ void PHG4SiliconTrackerDigitizer::CalculateLadderCellADCScale(PHCompositeNode *t
 
   // FPHX 3-bit ADC, thresholds are set in "set_fphx_adc_scale".
 
-  PHG4CylinderCellContainer *cells = findNode::getClass<PHG4CylinderCellContainer>(topNode,"G4CELL_SILICON_TRACKER");
+  PHG4CellContainer *cells = findNode::getClass<PHG4CellContainer>(topNode,"G4CELL_SILICON_TRACKER");
   PHG4CylinderGeomContainer *geom_container = findNode::getClass<PHG4CylinderGeomContainer>(topNode,"CYLINDERGEOM_SILICON_TRACKER");
     
   if (!geom_container || !cells) return;
@@ -124,10 +128,10 @@ void PHG4SiliconTrackerDigitizer::CalculateLadderCellADCScale(PHCompositeNode *t
     if (_max_fphx_adc.find(layer)==_max_fphx_adc.end())
       assert(!"Error: _max_fphx_adc is not available.");
 
-    float thickness = (layeriter->second)->get_thickness(); // mm
-    float mip_e     = 0.003876 * 2.*thickness; // GeV
+    float thickness = (layeriter->second)->get_thickness(); // cm
+    float mip_e     = 0.003876 *thickness; // GeV
     _energy_scale.insert(std::make_pair(layer, mip_e));
-  }
+ } 
 
   return;
 }
@@ -138,25 +142,61 @@ void PHG4SiliconTrackerDigitizer::DigitizeLadderCells(PHCompositeNode *topNode) 
   // Get Nodes
   //----------
  
-  PHG4CylinderCellContainer* cells = findNode::getClass<PHG4CylinderCellContainer>(topNode,"G4CELL_SILICON_TRACKER");
-  if (!cells) return; 
-  
+  PHG4CellContainer* cells = findNode::getClass<PHG4CellContainer>(topNode,"G4CELL_SILICON_TRACKER");
+  if (!cells) return;
+
+  const SvtxDeadMap *deadmap = findNode::getClass<SvtxDeadMap>(topNode, "DEADMAP_SILICON_TRACKER");
+  if (Verbosity()>=VERBOSITY_MORE)
+  {
+    if (deadmap)
+    {
+      cout << "PHG4SiliconTrackerDigitizer::DigitizeLadderCells - Use deadmap ";
+      deadmap->identify();
+    }
+    else
+    {
+      cout << "PHG4SiliconTrackerDigitizer::DigitizeLadderCells - Can not find deadmap, all channels enabled "<<endl;
+    }
+  }
+
   //-------------
   // Digitization
   //-------------
 
-  PHG4CylinderCellContainer::ConstRange cellrange = cells->getCylinderCells();
-  for(PHG4CylinderCellContainer::ConstIterator celliter = cellrange.first;
+  PHG4CellContainer::ConstRange cellrange = cells->getCells();
+  for(PHG4CellContainer::ConstIterator celliter = cellrange.first;
       celliter != cellrange.second;
       ++celliter) {
     
-    PHG4CylinderCell* cell = celliter->second;
-    
+    PHG4Cell* cell = celliter->second;
+
+    ++m_nCells;
+    if (deadmap)
+    {
+      if (deadmap->isDeadChannelINTT(
+              cell->get_layer(),             //const int layer,
+              cell->get_ladder_phi_index(),  //const int ladder_phi,
+              cell->get_ladder_z_index(),    //const int ladder_z,
+              cell->get_zbin(),              //const int strip_z,
+              cell->get_phibin()             //const int strip_phi
+              ))
+      {
+        ++m_nDeadCells;
+        if (Verbosity() >= VERBOSITY_MORE)
+        {
+          cout << "PHG4SiliconTrackerDigitizer::DigitizeLadderCells - dead cell at layer "<<cell->get_layer() <<": ";
+          cell->identify();
+        }
+        continue;
+      }
+    }  //    if (deadmap)
+
     SvtxHit_v1 hit;
 
     const int layer = cell->get_layer();
+
     hit.set_layer(layer);
-    hit.set_cellid(cell->get_cell_id());
+    hit.set_cellid(cell->get_cellid());
 
     if (_energy_scale.count(layer)>1)
       assert(!"Error: _energy_scale has two or more keys.");
@@ -194,13 +234,27 @@ void PHG4SiliconTrackerDigitizer::DigitizeLadderCells(PHCompositeNode *topNode) 
       }
     }
   }
-  
+
   return;
+}
+
+//! end of process
+int PHG4SiliconTrackerDigitizer::End(PHCompositeNode *topNode)
+{
+  if (Verbosity() >= VERBOSITY_SOME)
+  {
+    cout << "PHG4SiliconTrackerDigitizer::End - processed "
+        << m_nCells << " cell with "
+        << m_nDeadCells << " dead cells masked"
+        <<" ("<<100.*m_nDeadCells/m_nCells<<"%)"<< endl;
+  }
+
+  return Fun4AllReturnCodes::EVENT_OK;
 }
 
 void PHG4SiliconTrackerDigitizer::PrintHits(PHCompositeNode *topNode) {
 
-  if (verbosity >= 1) {
+  if (verbosity >= VERBOSITY_EVEN_MORE) {
 
     SvtxHitMap *hitlist = findNode::getClass<SvtxHitMap>(topNode,"SvtxHitMap");
     if (!hitlist) return;

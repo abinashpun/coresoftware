@@ -10,11 +10,12 @@
 #include <phool/getClass.h>
 
 // PHENIX Geant4 includes
-#include <g4cemc/RawTowerGeomContainer.h>
-#include <g4cemc/RawTowerContainer.h>
-#include <g4cemc/RawTower.h>
-#include <g4cemc/RawClusterContainer.h>
-#include <g4cemc/RawCluster.h>
+#include <calobase/RawTowerGeomContainer.h>
+#include <calobase/RawTowerContainer.h>
+#include <calobase/RawTower.h>
+#include <calobase/RawClusterContainer.h>
+#include <calobase/RawCluster.h>
+#include <calobase/RawClusterUtility.h>
 
 // standard includes
 #include <iostream>
@@ -217,16 +218,19 @@ int PHG4SvtxTrackProjection::process_event(PHCompositeNode *topNode)
       double min_dphi = NAN;
       double min_deta = NAN;
       double min_e = NAN;
-      for (unsigned int k = 0; k < clusterList->size(); ++k) {
+      for (const auto & iterator : clusterList->getClustersMap()) {
 
-	RawCluster *cluster = clusterList->getCluster(k);
+        const RawCluster *cluster = iterator.second;
+
+  //! eta as location mark of cluster relative to (0,0,0)
+  const float cluster_eta = RawClusterUtility::GetPseudorapidity(*cluster, CLHEP::Hep3Vector(0,0,0));
 
 	double dphi = atan2(sin(phi-cluster->get_phi()),cos(phi-cluster->get_phi()));
-	double deta = eta-cluster->get_eta();
+	double deta = eta-cluster_eta;
 	double r = sqrt(pow(dphi,2)+pow(deta,2));
 
 	if (r < min_r) {
-	  min_index = k;
+	  min_index = iterator.first;
 	  min_r = r;
 	  min_dphi = dphi;
 	  min_deta = deta;

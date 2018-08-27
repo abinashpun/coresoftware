@@ -1,32 +1,31 @@
 #include "QAG4SimulationCalorimeter.h"
+#include "QAHistManagerDef.h"
 
-#include <fun4all/SubsysReco.h>
-#include <fun4all/Fun4AllServer.h>
-#include <fun4all/PHTFileServer.h>
-#include <phool/PHCompositeNode.h>
-#include <fun4all/Fun4AllReturnCodes.h>
-#include <phool/getClass.h>
-
-#include <phool/PHCompositeNode.h>
-
+#include <g4main/PHG4Hit.h>
+#include <g4main/PHG4HitContainer.h>
+#include <g4main/PHG4Particle.h>
 #include <g4main/PHG4TruthInfoContainer.h>
 #include <g4main/PHG4VtxPoint.h>
-#include <g4main/PHG4Particle.h>
 
-//#include <g4hough/SvtxVertexMap.h>
-//#include <g4hough/PHG4HoughTransform.h>
-
-#include <g4cemc/RawTowerContainer.h>
-#include <g4cemc/RawTowerGeomContainer.h>
-#include <g4cemc/RawTower.h>
-#include <g4cemc/RawClusterContainer.h>
-#include <g4cemc/RawCluster.h>
+#include <calobase/RawTowerContainer.h>
+#include <calobase/RawTowerGeomContainer.h>
+#include <calobase/RawTower.h>
+#include <calobase/RawClusterContainer.h>
+#include <calobase/RawCluster.h>
 
 #include <g4eval/CaloEvalStack.h>
 #include <g4eval/CaloRawClusterEval.h>
 #include <g4eval/CaloRawTowerEval.h>
 #include <g4eval/CaloTruthEval.h>
 #include <g4eval/SvtxEvalStack.h>
+
+#include <fun4all/SubsysReco.h>
+#include <fun4all/Fun4AllServer.h>
+#include <fun4all/PHTFileServer.h>
+#include <fun4all/Fun4AllReturnCodes.h>
+
+#include <phool/getClass.h>
+#include <phool/PHCompositeNode.h>
 
 #include <TString.h>
 #include <TFile.h>
@@ -44,16 +43,15 @@
 #include <cassert>
 #include <cmath>
 
-#include "QAHistManagerDef.h"
 
 using namespace std;
 
-QAG4SimulationCalorimeter::QAG4SimulationCalorimeter(string calo_name,
+QAG4SimulationCalorimeter::QAG4SimulationCalorimeter(const string &calo_name,
     QAG4SimulationCalorimeter::enu_flags flags) :
     SubsysReco("QAG4SimulationCalorimeter_" + calo_name), //
     _calo_name(calo_name), _flags(flags), //
-    _calo_hit_container(NULL), _calo_abs_hit_container(NULL), _truth_container(
-        NULL)
+    _calo_hit_container(nullptr), _calo_abs_hit_container(nullptr), _truth_container(
+        nullptr)
 {
 
 }
@@ -281,7 +279,7 @@ QAG4SimulationCalorimeter::process_event_G4Hit(PHCompositeNode *topNode)
   if (verbosity > 2)
     cout << "QAG4SimulationCalorimeter::process_event_G4Hit() entered" << endl;
 
-  TH1F* h = NULL;
+  TH1F* h = nullptr;
 
   Fun4AllHistoManager *hm = QAHistManagerDef::getHistoManager();
   assert(hm);
@@ -384,6 +382,11 @@ QAG4SimulationCalorimeter::process_event_G4Hit(PHCompositeNode *topNode)
           // EM visible energy that is only associated with electron energy deposition
           PHG4Particle* particle = _truth_container->GetParticle(
               this_hit->get_trkid());
+          if (!particle)
+            {
+              cout <<__PRETTY_FUNCTION__<<" - Error - this PHG4hit missing particle: "; this_hit -> identify();
+            }
+          assert(particle);
           if (abs(particle->get_pid()) == 11)
             ev_calo_em += this_hit->get_light_yield();
 
@@ -463,9 +466,7 @@ QAG4SimulationCalorimeter::Init_Tower(PHCompositeNode *topNode)
   Fun4AllHistoManager *hm = QAHistManagerDef::getHistoManager();
   assert(hm);
 
-  TH1F * h = NULL;
-
-  h = new TH1F(TString(get_histo_prefix()) + "_Tower_1x1", //
+  TH1F *h = new TH1F(TString(get_histo_prefix()) + "_Tower_1x1", //
   TString(_calo_name) + " 1x1 tower;1x1 TOWER Energy (GeV)", 100, 9e-4, 100);
   QAHistManagerDef::useLogBins(h->GetXaxis());
   hm->registerHisto(h);
@@ -568,9 +569,8 @@ QAG4SimulationCalorimeter::process_event_Tower(PHCompositeNode *topNode)
     {
       max_energy[size] = 0;
 
-      TH1F* h = NULL;
 
-      h = dynamic_cast<TH1F*>(hm->getHisto(
+      TH1F* h = dynamic_cast<TH1F*>(hm->getHisto(
           get_histo_prefix() + "_Tower_" + size_label[size]));
       assert(h);
       energy_hist_list[size] = h;
@@ -730,11 +730,7 @@ QAG4SimulationCalorimeter::process_event_Cluster(PHCompositeNode *topNode)
       h->Fill(cluster->get_energy() / (last_primary->get_e() + 1e-9)); //avoids divide zero
 
       // now work on the projection:
-      const double average_r = towergeom->get_radius()
-          + towergeom->get_thickness() / 2;
-      const double theta = 2 * atan(exp(-cluster->get_eta()));
-      TVector3 hit(average_r * cos(cluster->get_phi()),
-          average_r * sin(cluster->get_phi()), average_r / tan(theta));
+      const CLHEP::Hep3Vector hit(cluster->get_position());
 
       const PHG4VtxPoint* primary_vtx = //
           _truth_container->GetPrimaryVtx(last_primary->get_vtx_id());
@@ -747,33 +743,33 @@ QAG4SimulationCalorimeter::process_event_Cluster(PHCompositeNode *topNode)
           primary_vtx->identify();
         }
 
-      const TVector3 vertex(primary_vtx->get_x(), primary_vtx->get_y(),
+      const CLHEP::Hep3Vector  vertex(primary_vtx->get_x(), primary_vtx->get_y(),
           primary_vtx->get_z());
 
       // projection axis
-      TVector3 axis_proj(last_primary->get_px(), last_primary->get_py(),
+      CLHEP::Hep3Vector axis_proj(last_primary->get_px(), last_primary->get_py(),
           last_primary->get_pz());
-      if (axis_proj.Mag() == 0)
-        axis_proj.SetXYZ(0, 0, 1);
-      axis_proj = axis_proj.Unit();
+      if (axis_proj.mag() == 0)
+        axis_proj.set(0, 0, 1);
+      axis_proj = axis_proj.unit();
 
       // azimuthal direction axis
-      TVector3 axis_azimuth = axis_proj.Cross(TVector3(0, 0, 1));
-      if (axis_azimuth.Mag() == 0)
-        axis_azimuth.SetXYZ(1, 0, 0);
-      axis_azimuth = axis_azimuth.Unit();
+      CLHEP::Hep3Vector axis_azimuth = axis_proj.cross(CLHEP::Hep3Vector(0, 0, 1));
+      if (axis_azimuth.mag() == 0)
+        axis_azimuth.set(1, 0, 0);
+      axis_azimuth = axis_azimuth.unit();
 
       // polar direction axis
-      TVector3 axis_polar = axis_proj.Cross(axis_azimuth);
-      assert(axis_polar.Mag() > 0);
-      axis_polar = axis_polar.Unit();
+      CLHEP::Hep3Vector axis_polar = axis_proj.cross(axis_azimuth);
+      assert(axis_polar.mag() > 0);
+      axis_polar = axis_polar.unit();
 
       TH2F * hlat = dynamic_cast<TH2F*>(hm->getHisto(
           get_histo_prefix() + "_Cluster_LateralTruthProjection"));
       assert(hlat);
 
-      const double hit_azimuth = axis_azimuth.Dot(hit - vertex);
-      const double hit_polar = axis_polar.Dot(hit - vertex);
+      const double hit_azimuth = axis_azimuth.dot(hit - vertex);
+      const double hit_polar = axis_polar.dot(hit - vertex);
       hlat->Fill(hit_polar, hit_azimuth);
 
     }

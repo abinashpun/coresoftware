@@ -1,4 +1,5 @@
 #include "QAG4SimulationCalorimeterSum.h"
+#include "QAHistManagerDef.h"
 
 #include <fun4all/SubsysReco.h>
 #include <fun4all/Fun4AllServer.h>
@@ -13,16 +14,17 @@
 #include <g4main/PHG4VtxPoint.h>
 #include <g4main/PHG4Particle.h>
 
-#include <g4cemc/RawTowerContainer.h>
-#include <g4cemc/RawTowerGeomContainer.h>
-#include <g4cemc/RawTower.h>
-#include <g4cemc/RawClusterContainer.h>
-#include <g4cemc/RawCluster.h>
+#include <calobase/RawTowerContainer.h>
+#include <calobase/RawTowerGeomContainer.h>
+#include <calobase/RawTower.h>
+#include <calobase/RawClusterContainer.h>
+#include <calobase/RawCluster.h>
 
 #include <g4eval/CaloEvalStack.h>
 #include <g4eval/SvtxEvalStack.h>
 
 #include <g4hough/PHG4HoughTransform.h>
+#include <g4hough/SvtxTrack.h>
 
 #include <TString.h>
 #include <TFile.h>
@@ -40,7 +42,6 @@
 #include <cassert>
 #include <cmath>
 
-#include "QAHistManagerDef.h"
 
 using namespace std;
 
@@ -50,7 +51,7 @@ QAG4SimulationCalorimeterSum::QAG4SimulationCalorimeterSum(
     _flags(flags), //
     _calo_name_cemc("CEMC"), _calo_name_hcalin("HCALIN"), //
     _calo_name_hcalout("HCALOUT"), //
-    _truth_container(NULL), _magField(+1.4)
+    _truth_container(nullptr), _magField(+1.4)
 {
 
 }
@@ -334,7 +335,7 @@ QAG4SimulationCalorimeterSum::process_event_TrackProj(PHCompositeNode *topNode)
 }
 
 bool
-QAG4SimulationCalorimeterSum::eval_trk_proj(string detector, SvtxTrack * track,
+QAG4SimulationCalorimeterSum::eval_trk_proj(const string &detector, SvtxTrack * track,
     PHCompositeNode *topNode)
 // Track projections
 {
@@ -493,7 +494,7 @@ QAG4SimulationCalorimeterSum::eval_trk_proj(string detector, SvtxTrack * track,
 //  Fun4AllHistoManager *hm = QAHistManagerDef::getHistoManager();
 //  assert(hm);
 //
-////  TH1F * h = NULL;
+////  TH1F * h = nullptr;
 //
 //  return Fun4AllReturnCodes::EVENT_OK;
 //}

@@ -23,8 +23,9 @@ PHGeom_DSTInspection(string DST_file_name = "sPHENIX.root_DST.root",
   gSystem->Load("libphgeom.so");
 
   // in case DST contains sPHENIX stuff
-  gSystem->Load("libcemc.so");
+  gSystem->Load("libg4calo.so");
   gSystem->Load("libg4vertex.so");
+  gSystem->Load("libcalotrigger_io.so");
   gSystem->Load("libg4eval.so");
 
 
@@ -80,7 +81,7 @@ PHGeom_DSTInspection(string DST_file_name = "sPHENIX.root_DST.root",
   v->SetGuideState(TGLUtil::kAxesEdge, kTRUE, kFALSE, 0);
   v->RefreshPadEditor(v);
 
-  v->CurrentCamera().RotateRad(-1.6.,0.);
+  v->CurrentCamera().RotateRad(-1.6,0.);
   v->DoDraw();
 
 }

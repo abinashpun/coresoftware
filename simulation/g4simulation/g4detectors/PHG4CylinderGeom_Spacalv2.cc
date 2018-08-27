@@ -9,7 +9,8 @@
  */
 
 #include "PHG4CylinderGeom_Spacalv2.h"
-#include "PHG4Parameters.h"
+
+#include <phparameter/PHParameters.h>
 
 #include <Geant4/globals.hh>
 #include <Geant4/G4PhysicalConstants.hh>
@@ -17,8 +18,6 @@
 #include <cmath>
 
 #include <iostream>
-
-ClassImp(PHG4CylinderGeom_Spacalv2)
 
 using namespace std;
 
@@ -81,7 +80,7 @@ PHG4CylinderGeom_Spacalv2::SetDefault()
 }
 
 void
-PHG4CylinderGeom_Spacalv2::ImportParameters(const PHG4Parameters & param)
+PHG4CylinderGeom_Spacalv2::ImportParameters(const PHParameters & param)
 {
   PHG4CylinderGeom_Spacalv1::ImportParameters(param);
 
@@ -125,10 +124,10 @@ PHG4CylinderGeom_Spacalv2::get_half_polar_taper_angle() const
 int
 PHG4CylinderGeom_Spacalv2::get_azimuthal_n_sec() const
 {
-  if (config == kNonProjective)
-    //For kNonProjective geometry, azimuthal_n_sec is calculated, and can not be set externally
-    return PHG4CylinderGeom_Spacalv1::get_azimuthal_n_sec();
-  else
+//  if (config == kNonProjective)
+//    //For kNonProjective geometry, azimuthal_n_sec is calculated, and can not be set externally
+//    return PHG4CylinderGeom_Spacalv1::get_azimuthal_n_sec();
+//  else
     return azimuthal_n_sec;
 }
 

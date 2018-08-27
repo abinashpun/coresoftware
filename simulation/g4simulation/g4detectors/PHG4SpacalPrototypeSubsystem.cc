@@ -2,15 +2,13 @@
 
 
 #include "PHG4SpacalPrototypeDetector.h"
-#include "PHG4ProjSpacalDetector.h"
 #include "PHG4FullProjSpacalDetector.h"
 #include "PHG4CylinderGeom.h"
 #include "PHG4CylinderGeomContainer.h"
 #include "PHG4SpacalPrototypeSteppingAction.h"
-#include "PHG4EventActionClearZeroEdep.h"
 
-#include "PHG4ParametersContainer.h"
-#include "PHG4Parameters.h"
+#include <phparameter/PHParameters.h>
+#include <phparameter/PHParametersContainer.h>
 
 #include <g4main/PHG4Utils.h>
 #include <g4main/PHG4PhenixDetector.h>
@@ -32,9 +30,8 @@ using namespace std;
 //_______________________________________________________________________
 PHG4SpacalPrototypeSubsystem::PHG4SpacalPrototypeSubsystem(const std::string &na) :
     PHG4DetectorSubsystem(na,0),
-    detector_(NULL), 
-    steppingAction_(NULL), 
-    eventAction_(NULL) //
+    detector_(nullptr), 
+    steppingAction_(nullptr)
 {
   InitializeParameters();
 }
@@ -78,8 +75,6 @@ PHG4SpacalPrototypeSubsystem::InitRunSubsystem(PHCompositeNode* topNode)
                   nodename.str().c_str(), "PHObject"));
         }
       cylinder_hits->AddLayer(0);
-      PHG4EventActionClearZeroEdep *evtac = new PHG4EventActionClearZeroEdep(
-          topNode, nodename.str());
       if (GetParams()->get_int_param("absorberactive"))
         {
           nodename.str("");
@@ -102,9 +97,7 @@ PHG4SpacalPrototypeSubsystem::InitRunSubsystem(PHCompositeNode* topNode)
                       nodename.str().c_str(), "PHObject"));
             }
           cylinder_hits->AddLayer(0);
-          evtac->AddNode(nodename.str());
         }
-      eventAction_ = evtac;
       steppingAction_ = new PHG4SpacalPrototypeSteppingAction(detector_);
     }
 
@@ -156,8 +149,10 @@ PHG4SpacalPrototypeSubsystem::Print(const std::string &what) const
 void
 PHG4SpacalPrototypeSubsystem::SetDefaultParameters()
 {
-  set_default_double_param("xpos", 0.);
-  set_default_double_param("ypos", 0.);
-  set_default_double_param("zpos", 0.);
+  set_default_double_param("xpos", 0.); // translation in 3D
+  set_default_double_param("ypos", 0.); // translation in 3D
+  set_default_double_param("zpos", 0.); // translation in 3D
+  set_default_double_param("z_rotation_degree", 0.); // roation in the vertical plane
+  set_default_int_param("construction_verbose", 0.); // roation in the vertical plane
   return;
 }

@@ -1,17 +1,16 @@
 AUTOMAKE_OPTIONS = foreign
 
-INCLUDES = \
+AM_CPPFLAGS = \
   -I$(includedir) \
   -I$(OFFLINE_MAIN)/include/eigen3 \
   -I$(OFFLINE_MAIN)/include \
   -I$(G4_MAIN)/include \
-  -I$(G4_MAIN)/include/Geant4 \
   -I`root-config --incdir`
 
 lib_LTLIBRARIES = \
    libg4eval.la
 
-AM_CXXFLAGS = -Wall -Werror -msse2
+AM_CXXFLAGS = -Werror -msse2
 
 libg4eval_la_LDFLAGS = \
   -L$(libdir) \
@@ -19,11 +18,7 @@ libg4eval_la_LDFLAGS = \
 
 libg4eval_la_LIBADD = \
   -lfun4all \
-  -lphg4hit \
-  -lg4detectors_io \
-  -lg4hough_io \
-  -lcemc_io \
-  -lg4jets_io
+  -lg4dst
 
 pkginclude_HEADERS = \
   BaseTruthEval.h \
@@ -91,10 +86,7 @@ libg4eval_la_SOURCES = \
 
 # Rule for generating table CINT dictionaries.
 %_Dict.C: %.h %LinkDef.h
-	rootcint -f $@ -c $(DEFAULT_INCLUDES) $(INCLUDES) $^
-
-%_Dict.cpp: %.h %LinkDef.h
-	rootcint -f $@ -c $(DEFAULT_INCLUDES) $(INCLUDES) $^
+	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
 ################################################
 # linking tests
@@ -115,4 +107,4 @@ testexternals.C:
 	echo "}" >> $@
 
 clean-local:
-	rm -f *Dict* testexternals.C
+	rm -f *Dict* testexternals.C *.pcm

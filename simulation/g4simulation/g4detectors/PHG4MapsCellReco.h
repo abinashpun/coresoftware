@@ -1,20 +1,23 @@
 #ifndef PHG4MAPSCELLRECO_H
 #define PHG4MAPSCELLRECO_H
 
+#include <phparameter/PHParameterContainerInterface.h>
+
 #include <fun4all/SubsysReco.h>
 #include <phool/PHTimeServer.h>
+
 #include <string>
 #include <map>
 #include <vector>
 
 class PHCompositeNode;
-class PHG4CylinderCell_MAPS;
+class PHG4Cell;
 
-class PHG4MapsCellReco : public SubsysReco
+class PHG4MapsCellReco : public SubsysReco, public PHParameterContainerInterface
 {
  public:
 
-  PHG4MapsCellReco(const std::string &name);
+  explicit PHG4MapsCellReco(const std::string &name = "MAPSRECO");
 
   virtual ~PHG4MapsCellReco(){}
   
@@ -29,6 +32,12 @@ class PHG4MapsCellReco : public SubsysReco
   
   void Detector(const std::string &d) {detector = d;}
   void checkenergy(const int i=1) {chkenergyconservation = i;}
+
+  double get_timing_window_min(const int i) {return tmin_max[i].first;}
+  double get_timing_window_max(const int i) {return tmin_max[i].second;}
+ void   set_timing_window(const int detid, const double tmin, const double tmax);
+
+  void SetDefaultParameters();
 
  protected:
 
@@ -56,6 +65,9 @@ class PHG4MapsCellReco : public SubsysReco
 				     double dy,
 				     double* rr // length of the line segment inside the rectangle (output)
 				     );
+
+  double circle_rectangle_intersection(double x1, double y1,  double x2,  double y2,  double mx, double my,  double r);
+  double sA(double r, double x, double y) ;
   
   //void set_size(const int i, const double sizeA, const int sizeB, const int what);
   int CheckEnergy(PHCompositeNode *topNode);
@@ -72,12 +84,9 @@ class PHG4MapsCellReco : public SubsysReco
   std::string seggeonodename;
   PHTimeServer::timer _timer;
   int nbins[2];
-//  int nslatscombined;
   int chkenergyconservation;
-//  int layer;
-
-  //std::map<unsigned int, PHG4CylinderCell *> celllist;
-  std::map<std::string, PHG4CylinderCell_MAPS*> celllist;  // This map holds the hit cells
+  std::map<int, std::pair<double,double> > tmin_max;
+  std::map<unsigned long long, PHG4Cell*> celllist;  // This map holds the hit cells
 };
 
 #endif

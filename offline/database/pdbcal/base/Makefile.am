@@ -5,15 +5,21 @@ lib_LTLIBRARIES = libpdbcalBase.la
 BUILT_SOURCES = \
   testexternals.C
 
-INCLUDES = -I$(includedir) -I$(OFFLINE_MAIN)/include \
+AM_CPPFLAGS = \
+  -I$(includedir) \
+  -I$(OFFLINE_MAIN)/include \
   -I`root-config --incdir`
 
 ROOTIFY  = perl $(srcdir)/PdbRootify.pl
 
 libpdbcalBase_la_LDFLAGS = \
   `root-config --evelibs`
+
 libpdbcalBase_la_LIBADD = \
-  -L$(libdir) -L$(OFFLINE_MAIN)/lib -lphool 
+  -L$(libdir) \
+  -L$(OFFLINE_MAIN)/lib \
+  -lphool \
+  -lXMLIO
 
 #please add new classes sorted according to the roman alphabet
 libpdbcalBase_la_SOURCES = \
@@ -23,7 +29,6 @@ libpdbcalBase_la_SOURCES = \
   PdbApplicationFactory_dict.C \
   PdbBankID.cc \
   PdbBankID_dict.C \
-  PdbBankListIterator.cc \
   PdbBankListIterator_dict.C \
   PdbBankList.cc \
   PdbBankList_dict.C \
@@ -94,7 +99,7 @@ testexternals.C:
 
 # this generates the standard dictionary
 %_dict.C : %.h %_LinkDef.h
-	 rootcint -f $@ -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $^
+	 rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
 #
 # Some Root dependencies have to be put in 'by hand'.
@@ -102,11 +107,10 @@ testexternals.C:
 #
 
 PdbBankManagerFactory_dict.C : PHGenericFactoryT.h PdbBankManagerFactory.h PdbBankManagerFactory_LinkDef.h
-	rootcint -f $@ -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $^
+	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
 RunToTimeFactory_dict.C: PHGenericFactoryT.h RunToTimeFactory.h RunToTimeFactory_LinkDef.h
-	rootcint -f $@ -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $^
+	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
 clean-local:
-	rm -f *_LinkDef.h
-	rm -f *_dict*
+	rm -f *_LinkDef.h *_dict* *.pcm

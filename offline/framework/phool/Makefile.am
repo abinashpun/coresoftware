@@ -5,7 +5,7 @@ lib_LTLIBRARIES = libphool.la
 BUILT_SOURCES = \
   testexternals.cc
 
-INCLUDES = \
+AM_CPPFLAGS = \
   -I$(includedir) \
   -I$(OFFLINE_MAIN)/include \
   -I`root-config --incdir`
@@ -24,6 +24,7 @@ libphool_la_SOURCES = \
   PHMessage.cc \
   PHNode.cc \
   PHNodeIOManager.cc \
+  PHNodeIntegrate.cc \
   PHNodeIterator.cc \
   PHNodeReset.cc \
   PHObject.cc \
@@ -45,6 +46,7 @@ pkginclude_HEADERS =  \
   PHIOManager.h \
   PHNode.h \
   PHNodeIOManager.h \
+  PHNodeIntegrate.h \
   PHNodeOperation.h \
   PHNodeReset.h \
   PHNodeIterator.h \
@@ -90,8 +92,7 @@ PHBase_dict.cc : \
   PHTimeStamp.h \
   recoConsts.h \
   PHBase_LinkDef.h
-	rootcint -f $@ -c $(DEFAULT_INCLUDES) $(INCLUDES) $^
+	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
 clean-local:
-	rm -f *_dict*
-	rm -f testexternals.cc
+	rm -f *_dict* testexternals.cc *.pcm

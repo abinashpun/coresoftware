@@ -2,7 +2,8 @@
 #include "PHG4MapsDetector.h"
 #include "PHG4EventActionClearZeroEdep.h"
 #include "PHG4MapsSteppingAction.h"
-#include "PHG4Parameters.h"
+
+#include <phparameter/PHParameters.h>
 
 #include <Geant4/G4GDMLParser.hh>
 
@@ -182,6 +183,7 @@ PHG4MapsSubsystem::SetDefaultParameters()
 //  set_default_double_param("rot_in_z",0);
   set_default_int_param("layer", layer);
   set_default_int_param("stave_type", stave_type);
+  set_default_int_param("N_staves", -1);
 
   set_default_double_param("layer_nominal_radius", NAN);
 

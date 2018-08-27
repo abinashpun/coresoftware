@@ -3,33 +3,33 @@ AUTOMAKE_OPTIONS = foreign
 AM_CXXFLAGS = -DG4INTY_USE_XT -DG4VIS_USE_OPENGL -DG4UI_USE_TCSH -DG4UI_USE_XM -DG4VIS_USE_OPENGLXM -DG4VIS_USE_RAYTRACERX -DG4VIS_USE_OPENGLX
 
 # set in configure.in to check if gcc version >= 4.8
-if GCC_GE_48
-  AM_CXXFLAGS += -std=c++11
-endif
+#if GCC_GE_48
+#  AM_CXXFLAGS += -std=c++11
+#endif
 
 # List of shared libraries to produce
 lib_LTLIBRARIES = \
     libphg4hit.la \
     libg4testbench.la
 
-INCLUDES = \
+AM_CPPFLAGS = \
     -I$(includedir) \
     -I$(XERCESCROOT)/include \
     -isystem $(OFFLINE_MAIN)/include \
     -isystem $(ROOTSYS)/include \
     -isystem ${G4_MAIN}/include \
     -I$(OFFLINE_MAIN)/include/eigen3 \
-    -isystem ${G4_MAIN}/include/Geant4 \
     -I$(OPT_SPHENIX)/include
 
-
+# rootcint barfs on isystem
 RINCLUDES = \
     -I$(includedir) \
+    -I$(XERCESCROOT)/include \
     -I$(OFFLINE_MAIN)/include \
     -I$(ROOTSYS)/include \
     -I${G4_MAIN}/include \
-    -I${G4_MAIN}/include/Geant4 \
-    -I$(XERCESCROOT)/include
+    -I$(OFFLINE_MAIN)/include/eigen3 \
+    -I$(OPT_SPHENIX)/include
 
 
 libphg4hit_la_LDFLAGS = \
@@ -47,6 +47,8 @@ libphg4hit_la_LIBADD = \
   -leicsmear
 
 libphg4hit_la_SOURCES = \
+    PHG4EventHeader.cc \
+    PHG4EventHeaderv1.cc \
     PHG4Hit_Dict.cc \
     PHG4HitReadBack.cc \
     PHG4HitDefs.cc \
@@ -54,6 +56,7 @@ libphg4hit_la_SOURCES = \
     PHG4Hitv1.cc \
     PHG4HitEval.cc \
     PHG4HitContainer.cc \
+    PHG4InEvent.cc \
     PHG4Particle.cc \
     PHG4Particlev1.cc \
     PHG4Particlev2.cc \
@@ -66,19 +69,16 @@ libphg4hit_la_SOURCES = \
 libg4testbench_la_SOURCES = \
     G4TBMagneticFieldSetup.cc \
     G4TBFieldMessenger.cc \
+    PHG4MagneticField.cc \
     HepMCNodeReader.cc \
-    PHG4_Dict.cc \
     PHG4ConsistencyCheck.cc \
+    PHG4Detector.cc \
     PHG4EtaParameterization.cc \
     PHG4EtaPhiParameterization.cc \
-    PHG4EventHeader.cc \
-    PHG4EventHeaderv1.cc \
     PHG4HeadReco.cc \
-    PHG4InEvent.cc \
     PHG4InEventCompress.cc \
     PHG4InEventReadBack.cc \
     PHG4InputFilter.cc \
-    PHG4ParameterisationTubsEta.cc \
     PHG4PileupGenerator.cc \
     PHG4SimpleEventGenerator.cc \
     PHG4ParticleGun.cc \
@@ -90,8 +90,10 @@ libg4testbench_la_SOURCES = \
     PHG4PhenixEventAction.cc \
     PHG4PhenixSteppingAction.cc \
     PHG4PhenixTrackingAction.cc \
+    PHG4_Dict.cc \
     PHG4PrimaryGeneratorAction.cc \
     PHG4Reco.cc \
+    PHG4ScoringManager.cc \
     PHG4RegionInformation.cc \
     PHG4TrackUserInfoV1.cc \
     PHG4TruthEventAction.cc \
@@ -107,14 +109,16 @@ libg4testbench_la_LDFLAGS = \
     -L$(libdir) \
     -L$(OFFLINE_MAIN)/lib \
     -lboost_filesystem \
-    -lg4field -lg4decayer \
+    -lphfield \
+    -lg4decayer \
     -lgsl -lgslcblas \
     -lvararray \
     -lHepMC \
     -lphhepmc \
     -lxerces-c \
     `geant4-config --libs` \
-    -lphgeom
+    -lphgeom \
+    -lphg4gdml
 
 libg4testbench_la_LIBADD = \
     libphg4hit.la
@@ -123,7 +127,9 @@ libg4testbench_la_LIBADD = \
 # please add new classes in alphabetical order
 
 pkginclude_HEADERS = \
+  HepMCNodeReader.h \
   PHBBox.h \
+  PHG4ColorDefs.h \
   PHG4Detector.h \
   PHG4EventAction.h \
   PHG4EventHeader.h \
@@ -136,15 +142,23 @@ pkginclude_HEADERS = \
   PHG4Particle.h \
   PHG4Particlev1.h \
   PHG4Particlev2.h \
+  PHG4ParticleGenerator.h \
+  PHG4ParticleGeneratorBase.h \
+  PHG4ParticleGeneratorVectorMeson.h \
+  PHG4PhenixDetector.h \
+  PHG4PileupGenerator.h \
+  PHG4Reco.h \
+  PHG4RegionInformation.h \
+  PHG4SimpleEventGenerator.h \
   PHG4Shower.h \
   PHG4Showerv1.h \
-  PHG4PhenixDetector.h \
-  PHG4RegionInformation.h \
   PHG4SteppingAction.h \
   PHG4Subsystem.h \
   PHG4TrackingAction.h \
   PHG4TrackUserInfoV1.h \
   PHG4TruthInfoContainer.h \
+  PHG4TruthSubsystem.h \
+  PHG4Units.h \
   PHG4Utils.h \
   PHG4VtxPoint.h \
   PHG4VtxPointv1.h
@@ -155,6 +169,8 @@ pkginclude_HEADERS = \
 noinst_PROGRAMS = \
   testexternals_g4hits \
   testexternals_g4tb
+
+BUILT_SOURCES = testexternals.cc
 
 testexternals_g4hits_SOURCES = testexternals.cc
 testexternals_g4hits_LDADD = libphg4hit.la
@@ -172,16 +188,10 @@ testexternals.cc:
 ##############################################
 # please add new classes in alphabetical order
 
-clean-local:
-	rm -f *Dict* $(BUILT_SOURCES)
-
 PHG4_Dict.cc: \
   HepMCNodeReader.h \
   PHG4ConsistencyCheck.h \
-  PHG4EventHeader.h \
-  PHG4EventHeaderv1.h \
   PHG4HeadReco.h \
-  PHG4InEvent.h \
   PHG4InEventCompress.h \
   PHG4InEventReadBack.h \
   PHG4InputFilter.h \
@@ -193,19 +203,24 @@ PHG4_Dict.cc: \
   PHG4ParticleGeneratorVectorMeson.h \
   PHG4ParticleGeneratorD0.h \
   PHG4Reco.h \
+  PHG4ScoringManager.h \
   PHG4Subsystem.h \
   PHG4TruthSubsystem.h \
+  PHG4Utils.h \
   ReadEICFiles.h \
   PHG4LinkDef.h
-	rootcint -f $@ -c $(DEFAULT_INCLUDES) $(RINCLUDES) $^
+	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(RINCLUDES) $^
 
 PHG4Hit_Dict.cc: \
+  PHG4EventHeader.h \
+  PHG4EventHeaderv1.h \
   PHG4HitReadBack.h \
   PHG4Hit.h \
   PHG4HitDefs.h \
   PHG4Hitv1.h \
   PHG4HitEval.h \
   PHG4HitContainer.h \
+  PHG4InEvent.h \
   PHG4Shower.h \
   PHG4Showerv1.h \
   PHG4Particle.h \
@@ -215,4 +230,7 @@ PHG4Hit_Dict.cc: \
   PHG4VtxPoint.h \
   PHG4VtxPointv1.h \
   PHG4HitLinkDef.h
-	rootcint -f $@ -c $(DEFAULT_INCLUDES) $(RINCLUDES) $^
+	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(RINCLUDES) $^
+
+clean-local:
+	rm -f *Dict* $(BUILT_SOURCES) *.pcm 

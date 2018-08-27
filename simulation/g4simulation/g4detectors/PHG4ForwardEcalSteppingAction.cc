@@ -188,7 +188,7 @@ bool PHG4ForwardEcalSteppingAction::UserSteppingAction( const G4Step* aStep, boo
 		{
 		  once = false;
 
-		  if (verbosity > 0) 
+		  if (Verbosity() > 0) 
 		    {
 		      cout << "PHG4ForwardEcalSteppingAction::UserSteppingAction::"
 			//
@@ -254,7 +254,7 @@ bool PHG4ForwardEcalSteppingAction::UserSteppingAction( const G4Step* aStep, boo
 	      hitcontainer->AddHit(layer_id, hit);
 	      if (saveshower)
 		{
-		  saveshower->add_g4hit_id(hits_->GetID(),hit->get_hit_id());
+		  saveshower->add_g4hit_id(hitcontainer->GetID(),hit->get_hit_id());
 		}
 	      // ownership has been transferred to container, set to null
 	      // so we will create a new hit for the next track
@@ -307,7 +307,7 @@ void PHG4ForwardEcalSteppingAction::SetInterfacePointers( PHCompositeNode* topNo
     }
   if ( ! absorberhits_)
     {
-      if (verbosity > 0)
+      if (Verbosity() > 0)
 	{
 	  cout << "PHG4ForwardEcalSteppingAction::SetTopNode - unable to find " << absorbernodename << endl;
 	}

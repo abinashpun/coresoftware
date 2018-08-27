@@ -28,13 +28,16 @@
 #include <g4main/PHG4Hit.h>
 #include <g4main/PHG4Particle.h>
 #include <g4main/PHG4TruthInfoContainer.h>
+#include <g4main/PHG4VtxPoint.h>
+#include <g4main/PHG4VtxPointv1.h>
 #include <phgenfit/Fitter.h>
 #include <phgenfit/PlanarMeasurement.h>
 #include <phgenfit/Track.h>
 #include <phgeom/PHGeomUtility.h>
+#include <phfield/PHFieldUtility.h>
 #include <phgenfit/SpacepointMeasurement.h>
-#include <g4cemc/RawTowerGeom.h>
-#include <g4cemc/RawTowerGeomContainer.h>
+#include <calobase/RawTowerGeom.h>
+#include <calobase/RawTowerGeomContainer.h>
 
 #include "SvtxTrackMap.h"
 #include "SvtxTrackMap_v1.h"
@@ -59,9 +62,7 @@ PHG4TrackFastSim::PHG4TrackFastSim(const std::string &name) :
 		SubsysReco(name), _detector_type(Vertical_Plane), _truth_container(
 				NULL), _sub_top_node_name("SVTX"), /*_clustermap_out_name("SvtxClusterMap"),*/_trackmap_out_name(
 				"SvtxTrackMap"),
-		/*_clustermap_out(NULL),*/_trackmap_out(NULL), _fitter(NULL), _mag_field_file_name(
-				"/phenix/upgrades/decadal/fieldmaps/fsPHENIX.2d.root"), _mag_field_re_scaling_factor(
-				1.), _reverse_mag_field(false), _fit_alg_name(
+		/*_clustermap_out(NULL),*/_trackmap_out(NULL), _fitter(NULL), _fit_alg_name(
 				"KalmanFitterRefTrack"), _primary_assumption_pid(211), _do_evt_display(
 				false), _use_vertex_in_fitting(true), _vertex_xy_resolution(
 				50E-4), _vertex_z_resolution(50E-4), _phi_resolution(50E-4), _r_resolution(
@@ -97,14 +98,11 @@ int PHG4TrackFastSim::InitRun(PHCompositeNode *topNode) {
 
 	CreateNodes(topNode);
 
-	TGeoManager* tgeo_manager = PHGeomUtility::GetTGeoManager(topNode);
-
+  TGeoManager* tgeo_manager = PHGeomUtility::GetTGeoManager(topNode);
+  PHField * field = PHFieldUtility::GetFieldMapNode(nullptr, topNode);
 	//_fitter = new PHGenFit::Fitter("sPHENIX_Geo.root","sPHENIX.2d.root", 1.4 / 1.5);
 	_fitter = PHGenFit::Fitter::getInstance(tgeo_manager,
-			_mag_field_file_name.data(),
-			(_reverse_mag_field) ?
-					-1. * _mag_field_re_scaling_factor :
-					_mag_field_re_scaling_factor, _fit_alg_name, "RKTrackRep",
+	    field, _fit_alg_name, "RKTrackRep",
 			_do_evt_display);
 
 	if (!_fitter) {
@@ -118,7 +116,7 @@ int PHG4TrackFastSim::InitRun(PHCompositeNode *topNode) {
 
 	for (int i = 0; i < _N_STATES; i++) {
 
-	  if( (_state_names[i]=="FHCAL") || (_state_names[i]=="FEMC") ){
+	  if( (_state_names[i]=="FHCAL") || (_state_names[i]=="FEMC") || (_state_names[i]=="EEMC") ){
 	    
 	    // Get the z-location of the detector plane
 
@@ -174,10 +172,10 @@ int PHG4TrackFastSim::End(PHCompositeNode *topNode) {
 
 int PHG4TrackFastSim::process_event(PHCompositeNode *topNode) {
 
-	_event++;
+  _event++;
 
 	if (verbosity >= 2)
-		std::cout << "PHG4TrackFastSim::process_event: " << _event << ".\n";
+	  std::cout << "PHG4TrackFastSim::process_event: " << _event << ".\n";
 
 	GetNodes(topNode);
 
@@ -189,13 +187,19 @@ int PHG4TrackFastSim::process_event(PHCompositeNode *topNode) {
 //	}
 
 	if (_trackmap_out)
-		_trackmap_out->empty();
+	  _trackmap_out->empty();
 	else {
-		LogError("_trackmap_out not found!");
-		return Fun4AllReturnCodes::ABORTRUN;
+	  LogError("_trackmap_out not found!");
+	  return Fun4AllReturnCodes::ABORTRUN;
 	}
 
-	vector<genfit::Track*> rf_gf_tracks;
+	vector<PHGenFit::Track*> rf_tracks;
+
+	PHG4VtxPoint *vtxPoint = _truth_container->GetPrimaryVtx(_truth_container->GetPrimaryVertexIndex());
+	// Smear the vertex ONCE for all particles in the event
+	vtxPoint->set_x(vtxPoint->get_x()+ gRandom->Gaus(0, _vertex_xy_resolution)); 
+	vtxPoint->set_y(vtxPoint->get_y()+ gRandom->Gaus(0, _vertex_xy_resolution)); 
+	vtxPoint->set_z(vtxPoint->get_z()+ gRandom->Gaus(0, _vertex_z_resolution)); 
 
 	PHG4TruthInfoContainer::ConstRange itr_range; 
 	if(_primary_tracking){
@@ -206,25 +210,28 @@ int PHG4TrackFastSim::process_event(PHCompositeNode *topNode) {
 	  // Check ALL particles
 	  itr_range = _truth_container->GetParticleRange();
 	}
-	
+	  
+	// Now we can loop over the particles
+
 	for (PHG4TruthInfoContainer::ConstIterator itr = itr_range.first;
 	     itr != itr_range.second; ++itr) {
 	  PHG4Particle* particle = itr->second;
 
-	  TVector3 seed_pos(0, 0, 0);
+	  TVector3 seed_pos(vtxPoint->get_x(), vtxPoint->get_y(), vtxPoint->get_z());
 	  TVector3 seed_mom(0, 0, 0);
 	  TMatrixDSym seed_cov(6);
 
 	  //! Create measurements
 	  std::vector<PHGenFit::Measurement*> measurements;
 
-	  //		_use_vertex_in_fitting = true;
-
 	  PHGenFit::Measurement* vtx_meas = NULL;
 
 	  if (_use_vertex_in_fitting) {
-	    vtx_meas = VertexMeasurement(TVector3(0, 0, 0),
-					 _vertex_xy_resolution, _vertex_z_resolution);
+	    vtx_meas = VertexMeasurement(TVector3(vtxPoint->get_x(), 
+						  vtxPoint->get_y(), 
+						  vtxPoint->get_z()),
+					 _vertex_xy_resolution, 
+					 _vertex_z_resolution);
 	    measurements.push_back(vtx_meas);
 	  }
 
@@ -236,6 +243,12 @@ int PHG4TrackFastSim::process_event(PHCompositeNode *topNode) {
 	      //LogWarning("measurements.size() < 3");
 	      std::cout << "event: " << _event << " : measurements.size() < 3"
 			<< "\n";
+	    }
+	    // Delete the measurements
+	    // We need to also delete the underlying genfit::AbsMeasurement object
+	    for(unsigned int im=0; im<measurements.size(); im++) {
+	      delete measurements[im]->getMeasurement(); 
+	      delete measurements[im]; 
 	    }
 	    continue;
 	  }
@@ -251,16 +264,17 @@ int PHG4TrackFastSim::process_event(PHCompositeNode *topNode) {
 	   */
 	  //int pid = 13; //
 	  //SMART(genfit::AbsTrackRep) rep = NEW(genfit::RKTrackRep)(pid);
-	  genfit::AbsTrackRep* rep = new genfit::RKTrackRep(
-							    _primary_assumption_pid);
+	  genfit::AbsTrackRep* rep = new genfit::RKTrackRep(_primary_assumption_pid);
 
 	  //rep->setDebugLvl(1); //DEBUG
 
-	  //! Initiallize track with seed from pattern recognition
-	  PHGenFit::Track* track = new PHGenFit::Track(rep, seed_pos, seed_mom,
-						       seed_cov);
+	  //! Initialize track with seed from pattern recognition
+ 
+	  PHGenFit::Track* track = new PHGenFit::Track(rep, seed_pos, seed_mom, seed_cov);
 
-	  rf_gf_tracks.push_back(track->getGenFitTrack());
+	  // NOTE: We need to keep a list of tracks so they can 
+	  // all be cleanly deleted at the end
+	  rf_tracks.push_back(track);
 
 	  //LogDEBUG;
 	  //! Add measurements to track
@@ -275,24 +289,35 @@ int PHG4TrackFastSim::process_event(PHCompositeNode *topNode) {
 	      //LogWarning("measurements.size() < 3");
 	      std::cout << "event: " << _event
 			<< " : fitting_err != 0, next track." << "\n";
-	    }
-	    continue;
+	    } 
+	    continue; 
 	  }
 
+	  TVector3 vtx(vtxPoint->get_x(), vtxPoint->get_y(), vtxPoint->get_z()); 
 	  SvtxTrack* svtx_track_out = MakeSvtxTrack(track,
 						    particle->get_track_id(),
-						    measurements.size());
+						    measurements.size(), vtx);
 
-	  if(svtx_track_out) _trackmap_out->insert(svtx_track_out);
+	  if(svtx_track_out) {
+	    _trackmap_out->insert(svtx_track_out);
+	    delete svtx_track_out; // insert makes a clone
+	  }
 
 	} // Loop all primary particles
 
 
 	//! add tracks to event display
-	if (_do_evt_display)
-		_fitter->getEventDisplay()->addEvent(rf_gf_tracks);
-	else
-		rf_gf_tracks.clear();
+	if (_do_evt_display){
+	  vector<genfit::Track*> rf_gf_tracks;
+	  for (std::vector<PHGenFit::Track*>::iterator it = rf_tracks.begin() ; it != rf_tracks.end(); ++it) 
+	    rf_gf_tracks.push_back((*it)->getGenFitTrack()); 	  
+	  _fitter->getEventDisplay()->addEvent(rf_gf_tracks);
+	}
+	else{
+	  for (std::vector<PHGenFit::Track*>::iterator it = rf_tracks.begin() ; it != rf_tracks.end(); ++it)
+	    delete (*it);
+	  rf_tracks.clear();
+	}
 
 //	if(_trackmap_out->get(0)) {
 //		_trackmap_out->get(0)->identify();
@@ -382,7 +407,7 @@ int PHG4TrackFastSim::GetNodes(PHCompositeNode * topNode) {
 				<< " node not found on node tree" << endl;
 		return Fun4AllReturnCodes::ABORTEVENT;
 	}
-
+	
 	return Fun4AllReturnCodes::EVENT_OK;
 }
 
@@ -427,6 +452,12 @@ int PHG4TrackFastSim::PseudoPatternRecognition(const PHG4Particle* particle,
 			continue;
 		}
 
+		int dettype = _phg4_detector_type[ilayer];
+		float detradres = _phg4_detector_radres[ilayer];
+		float detphires = _phg4_detector_phires[ilayer];
+		float detlonres = _phg4_detector_lonres[ilayer];
+		float dethiteff = _phg4_detector_hitfindeff[ilayer];
+		float detnoise = _phg4_detector_noise[ilayer];
 #if _DEBUG_MODE_ == 1
 		std::cout<<"DEBUG: ilayer: " << ilayer <<"; nsublayers: " <<_phg4hits[ilayer]->num_layers() <<" \n";
 #endif
@@ -437,7 +468,6 @@ int PHG4TrackFastSim::PseudoPatternRecognition(const PHG4Particle* particle,
 			for (PHG4HitContainer::ConstIterator itr =
 					_phg4hits[ilayer]->getHits(*layerit).first;
 					itr != _phg4hits[ilayer]->getHits(*layerit).second; ++itr) {
-
 				PHG4Hit * hit = itr->second;
 				if (!hit) {
 					LogDebug("No PHG4Hit Found!");
@@ -450,22 +480,24 @@ int PHG4TrackFastSim::PseudoPatternRecognition(const PHG4Particle* particle,
 #endif
 
 				if (hit->get_trkid() == particle->get_track_id()
-						|| gRandom->Uniform(0, 1) < _pat_rec_noise_prob) {
+						|| gRandom->Uniform(0, 1) < detnoise) {
 
-					PHGenFit::Measurement* meas = NULL;
-					if (_detector_type == Vertical_Plane)
-						meas = PHG4HitToMeasurementVerticalPlane(hit,
-								_phi_resolution, _r_resolution);
-					else if (_detector_type == Cylinder)
-						meas = PHG4HitToMeasurementCylinder(hit,
-								_phi_resolution, _z_resolution);
-					else {
-						LogError("Type not implemented!");
-						return Fun4AllReturnCodes::ABORTEVENT;
-					}
-					if (gRandom->Uniform(0, 1) <= _pat_rec_hit_finding_eff) {
-						meas_out.push_back(meas);
-						//meas->getMeasurement()->Print(); //DEBUG
+					if (gRandom->Uniform(0, 1) <= dethiteff) {
+					  PHGenFit::Measurement* meas = NULL;
+					  if (dettype == Vertical_Plane){
+					    meas = PHG4HitToMeasurementVerticalPlane(hit,
+										     detphires, detradres);
+					  }
+					  else if (dettype == Cylinder){
+					    meas = PHG4HitToMeasurementCylinder(hit,
+										detphires, detlonres);
+					  }
+					  else {
+					    LogError("Type not implemented!");
+					    return Fun4AllReturnCodes::ABORTEVENT;
+					  }
+					  meas_out.push_back(meas);
+					  //meas->getMeasurement()->Print(); //DEBUG
 					}
 				}
 			}
@@ -477,21 +509,22 @@ int PHG4TrackFastSim::PseudoPatternRecognition(const PHG4Particle* particle,
 
 SvtxTrack* PHG4TrackFastSim::MakeSvtxTrack(const PHGenFit::Track* phgf_track,
 					   const unsigned int truth_track_id, 
-					   const unsigned int nmeas) {
+					   const unsigned int nmeas,
+					   const TVector3 &vtx) {
 
 	double chi2 = phgf_track->get_chi2();
 	double ndf = phgf_track->get_ndf();
 
 	double pathlenth_from_first_meas = -999999;
 	double pathlenth_orig_from_first_meas = -999999;
-	genfit::MeasuredStateOnPlane* gf_state = new genfit::MeasuredStateOnPlane();
+	unique_ptr<genfit::MeasuredStateOnPlane> gf_state(new genfit::MeasuredStateOnPlane());
 
 	if (_detector_type == Vertical_Plane) {
-		pathlenth_orig_from_first_meas = phgf_track->extrapolateToPlane(*gf_state, TVector3(0., 0., 0.),
+		pathlenth_orig_from_first_meas = phgf_track->extrapolateToPlane(*gf_state, vtx,
 				TVector3(0., 0., 1.), 0);
 	}
 	else if (_detector_type == Cylinder)
-		pathlenth_orig_from_first_meas = phgf_track->extrapolateToLine(*gf_state, TVector3(0., 0., 0.),
+		pathlenth_orig_from_first_meas = phgf_track->extrapolateToLine(*gf_state, vtx,
 				TVector3(0., 0., 1.));
 	else {
 		LogError("Detector Type NOT implemented!");
@@ -506,8 +539,6 @@ SvtxTrack* PHG4TrackFastSim::MakeSvtxTrack(const PHGenFit::Track* phgf_track,
 	TVector3 mom = gf_state->getMom();
 	TVector3 pos = gf_state->getPos();
 	TMatrixDSym cov = gf_state->get6DCov();
-//	SvtxTrack_v1* out_track = new SvtxTrack_v1(*static_cast<const SvtxTrack_v1*> (svtx_track));
-//	SvtxTrack_v1* out_track = new SvtxTrack_v1();
 
 	SvtxTrack_FastSim *out_track = new SvtxTrack_FastSim();
 	out_track->set_truth_track_id(truth_track_id);
@@ -526,9 +557,7 @@ SvtxTrack* PHG4TrackFastSim::MakeSvtxTrack(const PHGenFit::Track* phgf_track,
 
 	out_track->set_chisq(chi2);
 	out_track->set_ndf(ndf);
-	out_track->set_charge(
-			(_reverse_mag_field) ?
-					-1. * phgf_track->get_charge() : phgf_track->get_charge());
+	out_track->set_charge(phgf_track->get_charge());
 
 	out_track->set_num_measurements(nmeas); 
 
@@ -548,7 +577,7 @@ SvtxTrack* PHG4TrackFastSim::MakeSvtxTrack(const PHGenFit::Track* phgf_track,
 	// State Projections
 	for (int i = 0; i < _N_STATES; i++) {
 
-	  if( (_state_names[i]=="FHCAL") || (_state_names[i]=="FEMC") ){
+	  if( (_state_names[i]=="FHCAL") || (_state_names[i]=="FEMC") || (_state_names[i]=="EEMC") ){
 	    
 	    // Project to a plane at fixed z
 		  pathlenth_from_first_meas = phgf_track->extrapolateToPlane(*gf_state, TVector3(0., 0., _state_location[i]),
@@ -582,10 +611,12 @@ SvtxTrack* PHG4TrackFastSim::MakeSvtxTrack(const PHGenFit::Track* phgf_track,
 	    {
 	      for(int j=i;j<6;j++)
 		{
-		  out_track->set_error(i,j, gf_state->get6DCov()[i][j]);
+		  state->set_error(i,j, gf_state->get6DCov()[i][j]);
 		}
 	    }
 	  out_track->insert_state(state);
+	  // the state is cloned on insert_state, so delete this copy here!
+	  delete state; 
 	}
 
 	return (SvtxTrack *)out_track;
@@ -657,8 +688,7 @@ PHGenFit::PlanarMeasurement* PHG4TrackFastSim::PHG4HitToMeasurementCylinder(
 	return meas;
 }
 
-PHGenFit::Measurement* PHG4TrackFastSim::VertexMeasurement(const TVector3 &vtx,
-		const double dxy, const double dz) {
+PHGenFit::Measurement* PHG4TrackFastSim::VertexMeasurement(const TVector3 &vtx, double dxy, double dz) {
 	PHGenFit::Measurement* meas = NULL;
 
 	TMatrixDSym cov(3);
@@ -668,12 +698,9 @@ PHGenFit::Measurement* PHG4TrackFastSim::VertexMeasurement(const TVector3 &vtx,
 	cov(2, 2) = dz * dz;
 
 	TVector3 pos = vtx;
-
-	double xy_smear = gRandom->Gaus(0, dxy);
-	double z_smear = gRandom->Gaus(0, dz);
-	pos.SetX(vtx.X() + xy_smear);
-	pos.SetY(vtx.Y() + xy_smear);
-	pos.SetZ(vtx.Z() + z_smear);
+	pos.SetX(vtx.X());
+	pos.SetY(vtx.Y());
+	pos.SetZ(vtx.Z());
 
 	meas = new PHGenFit::SpacepointMeasurement(pos, cov);
 

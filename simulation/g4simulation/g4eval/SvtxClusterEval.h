@@ -1,20 +1,24 @@
-
-#ifndef __SVTXCLUSTEREVAL_H__
-#define __SVTXCLUSTEREVAL_H__
+#ifndef SVTXCLUSTEREVAL_H__
+#define SVTXCLUSTEREVAL_H__
 
 #include "SvtxHitEval.h"
-#include "SvtxTruthEval.h"
-
-#include <phool/PHCompositeNode.h>
-#include <g4hough/SvtxClusterMap.h>
-#include <g4hough/SvtxCluster.h>
-#include <g4hough/SvtxHitMap.h>
-#include <g4main/PHG4Hit.h>
-#include <g4main/PHG4TruthInfoContainer.h>
-#include <g4main/PHG4Particle.h>
 
 #include <set>
 #include <map>
+
+class PHCompositeNode;
+
+class PHG4Hit;
+class PHG4Particle;
+class PHG4TruthInfoContainer;
+
+class SvtxCluster;
+class SvtxClusterMap;
+class SvtxHitMap;
+class SvtxTruthEval;
+
+using namespace std;
+typedef multimap<float, SvtxCluster*> innerMap;
 
 class SvtxClusterEval {
 
@@ -63,8 +67,16 @@ public:
 private:
 
   void get_node_pointers(PHCompositeNode* topNode);
+  void fill_cluster_layer_map();
+  //  void fill_g4hit_layer_map();
   bool has_node_pointers();
   
+  //! Fast approximation of atan2() for cluster searching
+  //! From https://www.dsprelated.com/showarticle/1052.php
+  float fast_approx_atan2(float y, float x);
+  float fast_approx_atan2(float y2x);
+
+
   SvtxHitEval _hiteval;
   SvtxClusterMap* _clustermap;
   SvtxHitMap* _hitmap;
@@ -84,6 +96,14 @@ private:
   std::map<PHG4Hit*,SvtxCluster* >                      _cache_best_cluster_from_g4hit;
   std::map<std::pair<SvtxCluster*,PHG4Particle*>,float> _cache_get_energy_contribution_g4particle;
   std::map<std::pair<SvtxCluster*,PHG4Hit*>,float>      _cache_get_energy_contribution_g4hit;
+
+#ifndef __CINT__
+  //! cluster azimuthal searching window in _clusters_per_layer. Unit: rad
+  static constexpr float  _clusters_searching_window = 0.1f;
+  std::multimap<unsigned int, innerMap> _clusters_per_layer;
+//  std::multimap<unsigned int, PHG4Hit*> _g4hits_per_layer;
+#endif
+
 };
 
-#endif // __SVTXCLUSTEREVAL_H__
+#endif // SVTXCLUSTEREVAL_H__

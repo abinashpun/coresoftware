@@ -5,7 +5,6 @@
 
 class PHG4SpacalPrototypeDetector;
 class PHG4SteppingAction;
-class PHG4EventAction;
 
 class PHG4SpacalPrototypeSubsystem : public PHG4DetectorSubsystem
 {
@@ -13,7 +12,7 @@ class PHG4SpacalPrototypeSubsystem : public PHG4DetectorSubsystem
 public:
 
   //! constructor
-  PHG4SpacalPrototypeSubsystem(const std::string &name = "CEMC");
+  explicit PHG4SpacalPrototypeSubsystem(const std::string &name = "CEMC");
 
   //! destructor
   virtual ~PHG4SpacalPrototypeSubsystem(void) {}
@@ -36,7 +35,6 @@ public:
   //! accessors (reimplemented)
   virtual PHG4Detector* GetDetector(void) const;
   PHG4SteppingAction* GetSteppingAction(void) const {return steppingAction_;}
-  PHG4EventAction* GetEventAction() const {return eventAction_;}
 
 
   void
@@ -54,7 +52,6 @@ private:
   //! particle tracking "stepping" action
   /*! derives from PHG4SteppingActions */
   PHG4SteppingAction* steppingAction_;
-  PHG4EventAction *eventAction_;
 };
 
 #endif

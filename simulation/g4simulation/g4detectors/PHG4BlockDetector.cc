@@ -1,5 +1,6 @@
 #include "PHG4BlockDetector.h"
-#include "PHG4Parameters.h"
+
+#include <phparameter/PHParameters.h>
 
 #include <g4main/PHG4Utils.h>
 
@@ -8,23 +9,24 @@
 #include <phool/PHIODataNode.h>
 #include <phool/getClass.h>
 
-#include <Geant4/G4Material.hh>
 #include <Geant4/G4Box.hh>
+#include <Geant4/G4Colour.hh>
 #include <Geant4/G4LogicalVolume.hh>
+#include <Geant4/G4Material.hh>
 #include <Geant4/G4PVPlacement.hh>
 #include <Geant4/G4SystemOfUnits.hh>
+#include <Geant4/G4UserLimits.hh>
 #include <Geant4/G4VisAttributes.hh>
-#include <Geant4/G4Colour.hh>
 
 #include <sstream>
 
 using namespace std;
 
 //_______________________________________________________________
-PHG4BlockDetector::PHG4BlockDetector( PHCompositeNode *Node, PHG4Parameters *parameters, const std::string &dnam, const int lyr):
+PHG4BlockDetector::PHG4BlockDetector( PHCompositeNode *Node, PHParameters *parameters, const std::string &dnam, const int lyr):
   PHG4Detector(Node, dnam),
   params(parameters),
-  block_physi(NULL),
+  block_physi(nullptr),
   layer(lyr)
 {}
 
@@ -56,10 +58,17 @@ void PHG4BlockDetector::Construct( G4LogicalVolume* logicWorld )
                           params->get_double_param("size_y")/2.*cm,
 			  params->get_double_param("size_z")/2.*cm);
 
+  double steplimits = params->get_double_param("steplimits") * cm;
+  G4UserLimits *g4userlimits = nullptr;
+  if (isfinite(steplimits))
+  {
+    g4userlimits = new G4UserLimits(steplimits);
+  }
+
   G4LogicalVolume *block_logic = new G4LogicalVolume(block_solid,
                                     TrackerMaterial,
                                     G4String(GetName().c_str()),
-                                    0, 0, 0);
+                                    nullptr, nullptr, g4userlimits);
   G4VisAttributes* matVis = new G4VisAttributes();
   if (params->get_int_param("blackhole"))
     {
@@ -82,5 +91,5 @@ void PHG4BlockDetector::Construct( G4LogicalVolume* logicWorld )
 						      params->get_double_param("place_z")*cm),
                                   block_logic,
                                   G4String(GetName().c_str()),
-                                  logicWorld, 0, false, overlapcheck);
+                                  logicWorld, 0, false, OverlapCheck());
 }

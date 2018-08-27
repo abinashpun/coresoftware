@@ -1,5 +1,5 @@
-#ifndef __PHPOINTERLISTITERATOR_H__
-#define __PHPOINTERLISTITERATOR_H__
+#ifndef PHOOL_PHPOINTERLISTITERATOR_H
+#define PHOOL_PHPOINTERLISTITERATOR_H
 
 //  Declaration of class PHPointerListIterator
 //  Purpose: iterator for access to a PHPointerList
@@ -7,58 +7,54 @@
 
 #include "PHPointerList.h"
 
-template <class T> 
-class PHPointerListIterator 
-{ 
-public: 
-  PHPointerListIterator(const PHPointerList<T> &); 
+template <class T>
+class PHPointerListIterator
+{
+  protected: 
+ PHPointerListIterator():m_List(0) {} 
+  public:
+  PHPointerListIterator(const PHPointerList<T>&);
   virtual ~PHPointerListIterator() {}
-
-public: 
-   T*		operator()();
-   void         operator--();
-   void		reset();
-   size_t       pos() const { return index; }
-
-protected:
-  PHPointerListIterator() : list(0),index(0) {}
-  
-private: 
-  const PHPointerList<T>& list;
-  size_t index;   
+  T* operator()();
+  void operator--();
+  void reset();
+  size_t pos() const { return m_Index; }
+ private:
+  const PHPointerList<T>& m_List;
+  size_t m_Index;
 };
 
 template <class T>
-PHPointerListIterator<T>::PHPointerListIterator(const PHPointerList<T>& lis) 
-  : list(lis)
+PHPointerListIterator<T>::PHPointerListIterator(const PHPointerList<T>& lis)
+  : m_List(lis)
 {
   reset();
 }
 
-template <class T> T* 
-PHPointerListIterator<T>::operator()()
+template <class T>
+T* PHPointerListIterator<T>::operator()()
 {
-   index++;
-   if (index < list.length())
-      {
-	return list[index];
-      }
-   else
-     {
-       return 0;
-     }
+  m_Index++;
+  if (m_Index < m_List.length())
+  {
+    return m_List[m_Index];
+  }
+  else
+  {
+    return 0;
+  }
 }
 
-template <class T> void 
-PHPointerListIterator<T>::operator--()
+template <class T>
+void PHPointerListIterator<T>::operator--()
 {
-    --index;
+  --m_Index;
 }
 
-template <class T> void 
-PHPointerListIterator<T>::reset()
+template <class T>
+void PHPointerListIterator<T>::reset()
 {
-   index =  ~(size_t) 0;
+  m_Index = ~(size_t) 0;
 }
 
-#endif /* __PHPOINTERLISTITERATOR_H__ */
+#endif  // PHOOL_PHPOINTERLISTITERATOR_H

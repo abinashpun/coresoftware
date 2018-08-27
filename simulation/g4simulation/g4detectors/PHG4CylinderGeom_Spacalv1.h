@@ -15,7 +15,7 @@
 #include <cmath>
 #include <map>
 
-class PHG4Parameters;
+class PHParameters;
 
 class PHG4CylinderGeom_Spacalv1 : public PHG4CylinderGeomv2
 {
@@ -42,8 +42,8 @@ public:
   void
   SetDefault();
 
-  //! load parameters from PHG4Parameters, which interface to Database/XML/ROOT files
-  virtual void ImportParameters(const PHG4Parameters & param);
+  //! load parameters from PHParameters, which interface to Database/XML/ROOT files
+  virtual void ImportParameters(const PHParameters & param);
 
   ///@}
 
@@ -235,17 +235,19 @@ public:
   /** @name General options
    */
   ///@{
-  double
-  get_calo_step_size() const
-  {
-    return get_fiber_distance() / 10.;
-  }
-
-  double
-  get_fiber_clading_step_size() const
-  {
-    return get_fiber_clading_thickness() / 10.;
-  }
+  //! obsolete as there is no need to limit steps in insentive volumne
+//  double
+//  get_calo_step_size() const
+//  {
+//    return get_fiber_distance() / 10.;
+//  }
+//
+  //! obsolete as there is no need to limit steps in insentive volumne
+//  double
+//  get_fiber_clading_step_size() const
+//  {
+//    return get_fiber_clading_thickness() / 10.;
+//  }
 
   double
   get_fiber_core_step_size() const
@@ -261,17 +263,28 @@ public:
     //! alias of above, more explicit
     k1DProjectiveSpacal = kNonProjective,
 
+
     //! Block constructed with taper in polar direction, non-taper in azimuthal direction.
     //! The final layout is approximately projective in both azimuthal and polar directions.
     kProjective_PolarTaper = 1,
+
 
     //! Fully projective spacal with 2D tapered modules
     kFullProjective_2DTaper = 2,
 
     //! Fully projective spacal with 2D tapered modules. To speed up construction, same-length fiber is used cross one tower
     kFullProjective_2DTaper_SameLengthFiberPerTower = 3,
-    //! alias of above, more explicit
-    k2DProjectiveSpacal = kFullProjective_2DTaper_SameLengthFiberPerTower,
+
+
+    //! Fully projective spacal with 2D tapered modules and allow azimuthal tilts
+    kFullProjective_2DTaper_Tilted = 4,
+
+    //! Fully projective spacal with 2D tapered modules and allow azimuthal tilts. To speed up construction, same-length fiber is used cross one tower
+    kFullProjective_2DTaper_Tilted_SameLengthFiberPerTower = 5,
+
+
+    //! alias of above, the default 2D-projective SPACAL
+    k2DProjectiveSpacal = kFullProjective_2DTaper_Tilted_SameLengthFiberPerTower,
 
     //! max allowed value, for boundary cross check
     kInvalidSpacalConfig
