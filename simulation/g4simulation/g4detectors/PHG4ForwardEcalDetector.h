@@ -18,6 +18,7 @@ class G4AssemblyVolume;
 class G4LogicalVolume;
 class G4VPhysicalVolume;
 class G4VSolid;
+class PHG4GDMLConfig;
 
 /**
  * \file ${file_name}
@@ -43,7 +44,7 @@ public:
   int IsInForwardEcal(G4VPhysicalVolume*) const;
 
   //! Select mapping file for calorimeter tower
-  void SetTowerMappingFile( std::string filename ) {
+  void SetTowerMappingFile( const std::string &filename ) {
     _mapping_tower_file = filename;
   }
 
@@ -62,6 +63,26 @@ public:
       _tower2_dx = dx;
       _tower2_dy = dy;
       _tower2_dz = dz;
+    }
+    else if(type==3){
+      _tower3_dx = dx;
+      _tower3_dy = dy;
+      _tower3_dz = dz;
+    }
+    else if(type==4){
+      _tower4_dx = dx;
+      _tower4_dy = dy;
+      _tower4_dz = dz;
+    }
+    else if(type==5){
+      _tower5_dx = dx;
+      _tower5_dy = dy;
+      _tower5_dz = dz;
+    }
+     else if(type==6){
+      _tower6_dx = dx;
+      _tower6_dy = dy;
+      _tower6_dz = dz;
     }
   }
 
@@ -92,7 +113,8 @@ private:
 
   G4LogicalVolume* ConstructTower( int type );
   G4LogicalVolume* ConstructTowerType2();
-  int PlaceTower(G4LogicalVolume* envelope , G4LogicalVolume* tower0, G4LogicalVolume* tower1, G4LogicalVolume* tower2 );
+  G4LogicalVolume* ConstructTowerType3_4_5_6( int type );
+  int PlaceTower(G4LogicalVolume* envelope , G4LogicalVolume* tower[6]);
   int ParseParametersFromTable();
 
   struct towerposition {
@@ -116,6 +138,22 @@ private:
   G4double _tower2_dx;
   G4double _tower2_dy;
   G4double _tower2_dz;
+
+  G4double _tower3_dx;
+  G4double _tower3_dy;
+  G4double _tower3_dz;
+
+  G4double _tower4_dx;
+  G4double _tower4_dy;
+  G4double _tower4_dz;
+
+  G4double _tower5_dx;
+  G4double _tower5_dy;
+  G4double _tower5_dz;
+
+  G4double _tower6_dx;
+  G4double _tower6_dy;
+  G4double _tower6_dz;
 
 protected:
 
@@ -148,6 +186,8 @@ protected:
 
   std::map< std::string, G4double > _map_global_parameter;
 
+  //! registry for volumes that should not be exported, i.e. fibers
+  PHG4GDMLConfig * gdml_config;
 };
 
 #endif

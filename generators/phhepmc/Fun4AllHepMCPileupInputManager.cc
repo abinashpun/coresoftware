@@ -1,16 +1,19 @@
 #include "Fun4AllHepMCPileupInputManager.h"
 
-#include <fun4all/Fun4AllReturnCodes.h>
-#include <fun4all/Fun4AllServer.h>
-#include <fun4all/Fun4AllSyncManager.h>
-#include <phool/getClass.h>
-#include <phool/recoConsts.h>
-
-#include <ffaobjects/RunHeader.h>
 #include "PHHepMCGenEvent.h"
 #include "PHHepMCGenEventMap.h"
 
+#include <ffaobjects/RunHeader.h>
+
 #include <frog/FROG.h>
+
+#include <fun4all/Fun4AllReturnCodes.h>
+#include <fun4all/Fun4AllServer.h>
+#include <fun4all/Fun4AllSyncManager.h>
+
+
+#include <phool/getClass.h>
+#include <phool/recoConsts.h>
 #include <phool/PHCompositeNode.h>
 #include <phool/PHDataNode.h>
 #include <phool/PHRandomSeed.h>
@@ -21,21 +24,20 @@
 #include <TPRegexp.h>
 #include <TString.h>
 
-#include <fstream>
-#include <iostream>
-#include <istream>
-#include <sstream>
+#include <gsl/gsl_const.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_rng.h>
 
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
 
+#include <fstream>
+#include <iostream>
+#include <istream>
+#include <sstream>
 #include <cstdlib>
 #include <memory>
-
-#include <gsl/gsl_const.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_rng.h>
 
 using namespace std;
 
@@ -113,11 +115,11 @@ int Fun4AllHepMCPileupInputManager::run(const int nevents)
       // loop until retrieve a valid event
       while (true)
       {
-        if (!isopen)
+        if (!IsOpen())
         {
-          if (!filelist.size())
+          if (FileListEmpty())
           {
-            if (verbosity > 0)
+            if (Verbosity() > 0)
             {
               cout << Name() << ": No Input file open" << endl;
             }
@@ -137,7 +139,7 @@ int Fun4AllHepMCPileupInputManager::run(const int nevents)
         {  // if an event was pushed back, copy saved pointer and
            // reset save_evt pointer
           evt = save_evt;
-          save_evt = NULL;
+          save_evt = nullptr;
         }
         else
         {
@@ -153,7 +155,7 @@ int Fun4AllHepMCPileupInputManager::run(const int nevents)
 
         if (!evt)
         {
-          if (verbosity > 1)
+          if (Verbosity() > 1)
           {
             cout << "error type: " << ascii_in->error_type()
                  << ", rdstate: " << ascii_in->rdstate() << endl;
@@ -162,8 +164,8 @@ int Fun4AllHepMCPileupInputManager::run(const int nevents)
         }
         else
         {
-          mySyncManager->CurrentEvent(evt->event_number());
-          if (verbosity > 0)
+          MySyncManager()->CurrentEvent(evt->event_number());
+          if (Verbosity() > 0)
           {
             cout << "hepmc evt no: " << evt->event_number() << endl;
           }

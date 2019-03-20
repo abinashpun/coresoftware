@@ -144,7 +144,6 @@ G4LogicalVolume* PHG4mRICHDetector::Construct_a_mRICH( G4LogicalVolume* logicWor
 //________________________________________________________________________//
 PHG4mRICHDetector::BoxPar::BoxPar()
 {
-  name="";
   fill(begin(halfXYZ),end(halfXYZ),(G4double) 0*mm);
   pos=G4ThreeVector(0*mm,0*mm,0*mm);
   material=G4Material::GetMaterial("G4_AIR");
@@ -159,9 +158,9 @@ PHG4mRICHDetector::BoxPar::BoxPar()
 //________________________________________________________________________//
 PHG4mRICHDetector::BoxPar::~BoxPar() {;}
 //________________________________________________________________________//
-PHG4mRICHDetector::PolyPar::PolyPar()
+PHG4mRICHDetector::PolyPar::PolyPar():
+  name("")
 {
-  name="";
   pos=G4ThreeVector(0*mm,0*mm,0*mm);
   start=(G4double) 0;
   theta=(G4double) 0;
@@ -181,7 +180,8 @@ PHG4mRICHDetector::PolyPar::PolyPar()
 //________________________________________________________________________//
 PHG4mRICHDetector::PolyPar::~PolyPar() {;}
 //________________________________________________________________________//
-PHG4mRICHDetector::LensPar::LensPar()
+PHG4mRICHDetector::LensPar::LensPar():
+  name("")
 {
   n=0;
   f=0;
@@ -190,7 +190,6 @@ PHG4mRICHDetector::LensPar::LensPar()
   centerThickness=0;
   grooveWidth=0;
 
-  name="";
   fill(begin(halfXYZ),end(halfXYZ),(G4double) 0*mm);
   pos=G4ThreeVector(0*mm,0*mm,0*mm);;
   material=G4Material::GetMaterial("G4_AIR");;

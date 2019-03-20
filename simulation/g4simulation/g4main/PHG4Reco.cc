@@ -20,8 +20,8 @@
 #include <g4gdml/PHG4GDMLUtility.hh>
 
 #include <phfield/PHFieldUtility.h>
-#include <phfield/PHFieldConfig_v1.h>
-#include <phfield/PHFieldConfig_v2.h>
+#include <phfield/PHFieldConfigv1.h>
+#include <phfield/PHFieldConfigv2.h>
 
 #include <fun4all/Fun4AllReturnCodes.h>
 
@@ -30,6 +30,7 @@
 #include <phool/getClass.h>
 #include <phool/recoConsts.h>
 
+#include <eicphysicslist/EICPhysicsList.hh>
 
 #include <TThread.h>
 
@@ -138,8 +139,7 @@ PHG4Reco::PHG4Reco(const string &name)
   , active_force_decay_(false)
   , force_decay_type_(kAll)
   , save_DST_geometry_(true)
-  , m_disableSteppingActions(false)
-  , _timer(PHTimeServer::get()->insert_new(name))
+  , m_disableUserActions(false)
 {
   for (int i = 0; i < 3; i++)
   {
@@ -168,7 +168,7 @@ PHG4Reco::~PHG4Reco(void)
 //_________________________________________________________________
 int PHG4Reco::Init(PHCompositeNode *topNode)
 {
-  if (verbosity > 0)
+  if (Verbosity() > 0)
   {
     cout << "========================= PHG4Reco::Init() ================================" << endl;
   }
@@ -176,10 +176,10 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
   G4Seed(iseed);  // fixed seed handled in PHRandomSeed()
 
   // create GEANT run manager
-  if (verbosity > 1) cout << "PHG4Reco::Init - create run manager" << endl;
+  if (Verbosity() > 1) cout << "PHG4Reco::Init - create run manager" << endl;
 
   // redirect GEANT verbosity to nowhere
-//  if (verbosity < 1)
+//  if (Verbosity() < 1)
   if (0)
   {
     G4UImanager *uimanager = G4UImanager::GetUIpointer();
@@ -195,41 +195,45 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
   G4VModularPhysicsList *myphysicslist = nullptr;
   if (physicslist == "FTFP_BERT")
   {
-    myphysicslist = new FTFP_BERT(verbosity);
+    myphysicslist = new FTFP_BERT(Verbosity());
   }
   else if (physicslist == "QGSP_BERT")
   {
-    myphysicslist = new QGSP_BERT(verbosity);
+    myphysicslist = new QGSP_BERT(Verbosity());
   }
   else if (physicslist == "QGSP_BIC")
   {
-    myphysicslist = new QGSP_BIC(verbosity);
+    myphysicslist = new QGSP_BIC(Verbosity());
   }
   else if (physicslist == "QGSP_BIC_HP")
   {
     setenv("AllowForHeavyElements", "1", 1);
-    myphysicslist = new QGSP_BIC_HP(verbosity);
+    myphysicslist = new QGSP_BIC_HP(Verbosity());
   }
 #ifdef HAVE_LHEP
   else if (physicslist == "LHEP")
   {
-    myphysicslist = new LHEP(verbosity);
+    myphysicslist = new LHEP(Verbosity());
   }
 #endif
 #ifdef HAVE_FTFP_BERT_HP
   else if (physicslist == "FTFP_BERT_HP")
   {
     setenv("AllowForHeavyElements", "1", 1);
-    myphysicslist = new FTFP_BERT_HP(verbosity);
+    myphysicslist = new FTFP_BERT_HP(Verbosity());
   }
 #endif
 #ifdef HAVE_QGSP_BERT_HP
   else if (physicslist == "QGSP_BERT_HP")
   {
     setenv("AllowForHeavyElements", "1", 1);
-    myphysicslist = new QGSP_BERT_HP(verbosity);
+    myphysicslist = new QGSP_BERT_HP(Verbosity());
   }
 #endif
+  else if (physicslist == "EIC")
+  {
+    myphysicslist = new EICPhysicsList();
+  }
   else
   {
     cout << "Physics List " << physicslist << " not implemented" << endl;
@@ -262,7 +266,7 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
     reco->Init(topNode);
   }
 
-  if (verbosity > 0)
+  if (Verbosity() > 0)
   {
     cout << "===========================================================================" << endl;
   }
@@ -271,20 +275,20 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
 
 int PHG4Reco::InitField(PHCompositeNode *topNode)
 {
-  if (verbosity > 1) cout << "PHG4Reco::InitField - create magnetic field setup" << endl;
+  if (Verbosity() > 1) cout << "PHG4Reco::InitField - create magnetic field setup" << endl;
 
   unique_ptr<PHFieldConfig> default_field_cfg(nullptr);
 
   if (fieldmapfile != "NONE")
   {
-    default_field_cfg.reset(new PHFieldConfig_v1(mapdim, fieldmapfile, magfield_rescale));
+    default_field_cfg.reset(new PHFieldConfigv1(mapdim, fieldmapfile, magfield_rescale));
   }
   else
   {
-    default_field_cfg.reset(new PHFieldConfig_v2(0, 0, magfield * magfield_rescale));
+    default_field_cfg.reset(new PHFieldConfigv2(0, 0, magfield * magfield_rescale));
   }
 
-  if (verbosity > 1) cout << "PHG4Reco::InitField - create magnetic field setup" << endl;
+  if (Verbosity() > 1) cout << "PHG4Reco::InitField - create magnetic field setup" << endl;
 
   PHField * phfield = PHFieldUtility::GetFieldMapNode(default_field_cfg.get(), topNode, Verbosity()+1);
   assert(phfield);
@@ -310,7 +314,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
     return Fun4AllReturnCodes::EVENT_OK;
   }
   InitRunDone = 1;
-  if (verbosity > 0)
+  if (Verbosity() > 0)
   {
     cout << "========================= PHG4Reco::InitRun() ================================" << endl;
   }
@@ -332,9 +336,9 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
   }
 
   // create phenix detector, add subsystems, and register to GEANT
-  if (verbosity > 1) cout << "PHG4Reco::Init - create detector" << endl;
+  if (Verbosity() > 1) cout << "PHG4Reco::Init - create detector" << endl;
   detector_ = new PHG4PhenixDetector();
-  detector_->Verbosity(verbosity);
+  detector_->Verbosity(Verbosity());
   detector_->SetWorldSizeX(WorldSize[0] * cm);
   detector_->SetWorldSizeY(WorldSize[1] * cm);
   detector_->SetWorldSizeZ(WorldSize[2] * cm);
@@ -347,9 +351,20 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
 
   BOOST_FOREACH (PHG4Subsystem *g4sub, subsystems_)
   {
-    detector_->AddDetector(g4sub->GetDetector());
+    if (g4sub->GetDetector())
+    {
+      detector_->AddDetector(g4sub->GetDetector());
+    }
   }
   runManager_->SetUserInitialization(detector_);
+
+
+  if (m_disableUserActions)
+  {
+    cout << "PHG4Reco::InitRun - WARNING - event/track/stepping action disabled! "
+         << "This is aimed to reduce resource consumption for G4 running only. E.g. dose analysis. "
+         << "Meanwhile, it will disable all Geant4 based analysis. Toggle this feature on/off with PHG4Reco::setDisableUserActions()" << endl;
+  }
 
   setupInputEventNodeReader(topNode);
   // create main event action, add subsystemts and register to GEANT
@@ -363,7 +378,11 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
       eventAction_->AddAction(evtact);
     }
   }
-  runManager_->SetUserAction(eventAction_);
+
+  if (not m_disableUserActions)
+  {
+    runManager_->SetUserAction(eventAction_);
+  }
 
   // create main stepping action, add subsystems and register to GEANT
   steppingAction_ = new PHG4PhenixSteppingAction();
@@ -372,7 +391,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
     PHG4SteppingAction *action = g4sub->GetSteppingAction();
     if (action)
     {
-      if (verbosity > 1)
+      if (Verbosity() > 1)
       {
         cout << "Adding steppingaction for " << g4sub->Name() << endl;
       }
@@ -381,13 +400,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
     }
   }
 
-  if (m_disableSteppingActions)
-  {
-    cout << "PHG4Reco::InitRun - WARNING - stepping action disabled! "
-         << "This is aimed to reduce resource consumption for G4 running only. E.g. dose analysis. "
-         << "Meanwhile, it will disable all Geant4 based analysis. Toggle this feature on/off with PHG4Reco::setDisableSteppingActions()" << endl;
-  }
-  else
+  if (not m_disableUserActions)
   {
     runManager_->SetUserAction(steppingAction_);
   }
@@ -409,7 +422,10 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
     }
   }
 
-  runManager_->SetUserAction(trackingAction_);
+  if (not m_disableUserActions)
+  {
+    runManager_->SetUserAction(trackingAction_);
+  }
 
   // initialize
   runManager_->Initialize();
@@ -421,7 +437,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
   // G4Scintillation* theScintillationProcess      = new G4Scintillation("Scintillation");
 
   /*
-    if (verbosity > 0)
+    if (Verbosity() > 0)
     {
     // This segfaults
     theCerenkovProcess->DumpPhysicsTable();
@@ -429,7 +445,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
   */
   theCerenkovProcess->SetMaxNumPhotonsPerStep(100);
   theCerenkovProcess->SetMaxBetaChangePerStep(10.0);
-  theCerenkovProcess->SetTrackSecondariesFirst(true);
+  theCerenkovProcess->SetTrackSecondariesFirst(false); // current PHG4TruthTrackingAction does not support suspect active track and track secondary first
 
   // theScintillationProcess->SetScintillationYieldFactor(1.);
   // theScintillationProcess->SetTrackSecondariesFirst(true);
@@ -480,7 +496,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
   G4HadronicProcessStore::Instance()->SetVerbose(0);
   G4LossTableManager::Instance()->SetVerbose(1);
 
-  if ((verbosity < 1) && (uisession_))
+  if ((Verbosity() < 1) && (uisession_))
   {
     uisession_->Verbosity(1);  // let messages after setup come through
   }
@@ -500,7 +516,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
     PHGeomUtility::RemoveGeometryFile(filename);
   }
 
-  if (verbosity > 0)
+  if (Verbosity() > 0)
   {
     cout << "===========================================================================" << endl;
   }
@@ -576,8 +592,6 @@ int PHG4Reco::process_event(PHCompositeNode *topNode)
     }
   }
 
-  _timer.get()->restart();
-
   // run one event
   if (Verbosity() >= 2)
   {
@@ -586,7 +600,6 @@ int PHG4Reco::process_event(PHCompositeNode *topNode)
     ineve->identify();
   }
   runManager_->BeamOn(1);
-  _timer.get()->stop();
 
   BOOST_FOREACH (PHG4Subsystem *g4sub, subsystems_)
   {
@@ -731,12 +744,44 @@ void PHG4Reco::DefineMaterials()
   cfrp_intt->AddElement(G4Element::GetElement("H"), 6);
   cfrp_intt->AddElement(G4Element::GetElement("O"), 1);
 
+  // water glycol mixture for the INTT endcap rings
+  G4Material *PropyleneGlycol = new G4Material("Propyleneglycol", 1.036 * g / cm3, 3);
+  PropyleneGlycol->AddElement(G4Element::GetElement("C"), 3);
+  PropyleneGlycol->AddElement(G4Element::GetElement("H"), 8);
+  PropyleneGlycol->AddElement(G4Element::GetElement("O"), 2);
+
+  G4Material *WaterGlycol_INTT = new G4Material("WaterGlycol_INTT", density = (0.997 * 0.7 + 1.036 * 0.3) * g / cm3, ncomponents = 2);
+  WaterGlycol_INTT->AddMaterial(PropyleneGlycol, fractionmass = 0.30811936);
+  WaterGlycol_INTT->AddMaterial(G4Material::GetMaterial("G4_WATER"), fractionmass = 0.69188064);
+
   // making Rohacell foam 110
   G4Material *rohacell_foam_110 = new G4Material("ROHACELL_FOAM_110", density = 0.110 * g / cm3, ncomponents = 4);
   rohacell_foam_110->AddElement(G4Element::GetElement("C"), 8);
   rohacell_foam_110->AddElement(G4Element::GetElement("H"),11);
   rohacell_foam_110->AddElement(G4Element::GetElement("O"), 2);
   rohacell_foam_110->AddElement(G4Element::GetElement("N"), 1);
+
+  // making Rohacell foam ROHACELL 51 WF
+  // Source of density: https://www.rohacell.com/product/peek-industrial/downloads/rohacell%20wf%20product%20information.pdf
+  G4Material *rohacell_foam_51 = new G4Material("ROHACELL_FOAM_51", density = 0.052 * g / cm3, ncomponents = 4);
+  rohacell_foam_51->AddElement(G4Element::GetElement("C"), 8);
+  rohacell_foam_51->AddElement(G4Element::GetElement("H"),11);
+  rohacell_foam_51->AddElement(G4Element::GetElement("O"), 2);
+  rohacell_foam_51->AddElement(G4Element::GetElement("N"), 1);
+
+  // making Carbon PEEK : 30 - 70 Vf.
+  // https://www.quantum-polymers.com/wp-content/uploads/2017/03/QuantaPEEK-CF30.pdf
+  G4Material *peek = new G4Material("PEEK", density = 1.32 * g / cm3, ncomponents = 3);
+  peek->AddElement(G4Element::GetElement("C"),19);
+  peek->AddElement(G4Element::GetElement("H"),12);
+  peek->AddElement(G4Element::GetElement("O"), 3);
+
+  G4Material *cf = new G4Material("CF", density = 1.62 * g / cm3, ncomponents = 1);
+  cf->AddElement(G4Element::GetElement("C"),1.);
+
+  G4Material *cf30_peek70 = new G4Material("CF30_PEEK70", density = (1.32 * 0.7 + 1.62 * 0.3) * g / cm3, ncomponents = 2);
+  cf30_peek70->AddMaterial(cf  , fractionmass = 0.34468085);
+  cf30_peek70->AddMaterial(peek, fractionmass = 0.65531915);
 
 
   // gas mixture for the MuID in fsPHENIX. CLS 02-25-14
@@ -771,6 +816,19 @@ void PHG4Reco::DefineMaterials()
   SS310->AddElement(G4Element::GetElement("Si"), 0.0075);
   SS310->AddElement(G4Element::GetElement("P"), 0.00045);
 
+  // SS316 from https://www.azom.com
+  G4Material *SS316 =
+      new G4Material("SS316", density = 8.0 * g / cm3, ncomponents = 9);
+  SS316->AddElement(G4Element::GetElement("Fe"), 0.68095);
+  SS316->AddElement(G4Element::GetElement("Cr"), 0.16);
+  SS316->AddElement(G4Element::GetElement("Ni"), 0.11);
+  SS316->AddElement(G4Element::GetElement("Mn"), 0.02);
+  SS316->AddElement(G4Element::GetElement("Mo"), 0.02);
+  SS316->AddElement(G4Element::GetElement("C"), 0.0008);
+  SS316->AddElement(G4Element::GetElement("S"), 0.0003);
+  SS316->AddElement(G4Element::GetElement("Si"), 0.0075);
+  SS316->AddElement(G4Element::GetElement("P"), 0.00045);
+
   G4Material *Steel =
       new G4Material("Steel", density = 7.86 * g / cm3, ncomponents = 5);
   Steel->AddElement(G4Element::GetElement("Fe"), 0.9834);
@@ -798,11 +856,18 @@ void PHG4Reco::DefineMaterials()
   Al5083->AddElement(G4Element::GetElement("Mg"), 0.04);
   Al5083->AddElement(G4Element::GetElement("Al"), 0.956);
 
-// Al 4046 from http://www.matweb.com
+  // Al 4046 from http://www.matweb.com
   G4Material *Al4046 = new G4Material("Al4046",density = 2.66 * g / cm3, ncomponents = 3);
   Al4046->AddElement(G4Element::GetElement("Al"), 0.897);
   Al4046->AddElement(G4Element::GetElement("Si"), 0.1);
   Al4046->AddElement(G4Element::GetElement("Mg"), 0.003);
+
+  // Al 6061T6 from http://www.matweb.com
+  G4Material *Al6061T6 = new G4Material("Al6061T6",density = 2.70 * g / cm3, ncomponents = 4);
+  Al6061T6->AddElement(G4Element::GetElement("Al"), 0.975);
+  Al6061T6->AddElement(G4Element::GetElement("Si"), 0.008);
+  Al6061T6->AddElement(G4Element::GetElement("Mg"), 0.01);
+  Al6061T6->AddElement(G4Element::GetElement("Fe"), 0.007);
 
   G4Material *FPC = new G4Material("FPC", 1.542 * g / cm3, 2);
   FPC->AddMaterial(G4Material::GetMaterial("G4_Cu"), 0.0162);
@@ -963,7 +1028,7 @@ PMMA      -3  12.01 1.008 15.99  6.  1.  8.  1.19  3.6  5.7  1.4
   LiF->AddElement(G4Element::GetElement("Li"), natoms = 1);
   LiF->AddElement(G4Element::GetElement("F"), natoms = 1);
 
-  if (verbosity > 1)
+  if (Verbosity() > 1)
   {
     cout << "g4_lif: " << g4_lif << endl;
     cout << "LiF: " << LiF << endl;
@@ -1317,7 +1382,7 @@ PHG4Reco::getSubsystem(const string &name)
   {
     if (subsys->Name() == name)
     {
-      if (verbosity > 0)
+      if (Verbosity() > 0)
       {
         cout << "Found Subsystem " << name << endl;
       }

@@ -1,8 +1,11 @@
+##############################################
+# please add new classes in alphabetical order
+
 AUTOMAKE_OPTIONS = foreign
 
 lib_LTLIBRARIES = \
-  libmvtx.la \
-  libmvtx_io.la
+  libmvtx_io.la \
+  libmvtx.la 
 
 
 AM_CPPFLAGS = \
@@ -15,43 +18,58 @@ AM_LDFLAGS = \
   -L$(ROOTSYS)/lib \
   -L$(OFFLINE_MAIN)/lib
 
+pkginclude_HEADERS = \
+  MVTXClusterizer.h \
+  MvtxClusterizer.h \
+  MvtxDefs.h \
+  MvtxHit.h
+
+ROOTDICTS = \
+  MvtxHit_Dict.cc
+if MAKEROOT6
+  pcmdir = $(libdir)
+  nobase_dist_pcm_DATA = \
+    MvtxHit_Dict_rdict.pcm
+else
+  ROOT5_IO_DICTS = \
+    MvtxDefs_Dict.cc
+
+  ROOT5_DICTS = \
+    MVTXClusterizer_Dict.cc \
+    MvtxClusterizer_Dict.cc
+endif
+
 # sources for mvtx library
 libmvtx_la_SOURCES = \
-  MvtxClusterizer.cc \
-  MvtxClusterizer_Dict.cc \
-  MvtxDefs.cc \
-  MvtxDefs_Dict.cc 
+  $(ROOT5_DICTS) \
+  MVTXClusterizer.cc \
+  MvtxClusterizer.cc
 
 libmvtx_la_LIBADD = \
+  libmvtx_io.la \
   -lfun4all \
-  -ltrack_util \
-  -ltrack_io
+  -ltrack_io \
+  -ltrackbase_historic_io \
+  -lg4detectors \
+  -lg4mvtx 
 
 # sources for io library
 libmvtx_io_la_SOURCES = \
-  MvtxHit.cc \
-  MvtxHit_Dict.cc
+  $(ROOTDICTS) \
+  $(ROOT5_IO_DICTS) \
+  MvtxDefs.cc \
+  MvtxHit.cc
 
 libmvtx_io_la_LIBADD = \
-  libmvtx.la \
-  -lfun4all \
-  -ltrack_util \
+  -lphool \
   -ltrack_io
-
-
 
 # Rule for generating table CINT dictionaries.
 %_Dict.cc: %.h %LinkDef.h
 	rootcint -f $@ @CINTDEFS@  -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
-
-##############################################
-# please add new classes in alphabetical order
-
-pkginclude_HEADERS = \
-  MvtxClusterizer.h \
-  MvtxDefs.h \
-  MvtxHit.h
+#just to get the dependency
+%_Dict_rdict.pcm: %_Dict.cc ;
 
 
 
@@ -80,4 +98,4 @@ testexternals.cc:
 ################################################
 
 clean-local:
-	rm -f *Dict* *.pcm
+	rm -f *Dict* $(BUILT_SOURCES) *.pcm

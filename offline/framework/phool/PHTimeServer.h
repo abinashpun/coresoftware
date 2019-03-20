@@ -1,6 +1,5 @@
-// $Id: PHTimeServer.h,v 1.5 2014/01/12 16:15:05 pinkenbu Exp $
-#ifndef __PHTIMESERVER_H__
-#define __PHTIMESERVER_H__
+#ifndef PHOOL_PHTIMESERVER_H
+#define PHOOL_PHTIMESERVER_H
 
 /*!
 \file		PHTimeServer.h
@@ -14,6 +13,7 @@
 
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 
 #ifndef __CINT__
@@ -54,7 +54,7 @@ class PHTimeServer
 
    private:
 #ifndef __CINT__
-    boost::shared_ptr<PHTimer> _timer;
+    std::shared_ptr<PHTimer> _timer;
 #endif
     unsigned short _uid;
   };
@@ -129,7 +129,7 @@ class PHTimeServer
     {
       if (_iter == _map.end()) return 0;
       PHTimeServer::timer* out(&_iter->second);
-      _iter++;
+      ++_iter;
       return out;
     }
 
@@ -142,7 +142,7 @@ class PHTimeServer
 
    protected:
     //! creator
-    iterator(PHTimeServer::time_map map)
+    explicit iterator(PHTimeServer::time_map& map)
       : _map(map)
       , _iter(_map.begin())
     {

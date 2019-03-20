@@ -1,9 +1,11 @@
+##############################################
+# please add new classes in alphabetical order
+
 AUTOMAKE_OPTIONS = foreign
 
 lib_LTLIBRARIES = \
-  libtpc.la \
-  libtpc_io.la
-
+  libtpc_io.la \
+  libtpc.la
 
 AM_CPPFLAGS = \
   -I$(includedir) \
@@ -15,42 +17,56 @@ AM_LDFLAGS = \
   -L$(ROOTSYS)/lib \
   -L$(OFFLINE_MAIN)/lib
 
+pkginclude_HEADERS = \
+  TpcDefs.h \
+  TpcHit.h \
+  TPCClusterizer.h
+
+ROOTDICTS = \
+  TpcHit_Dict.cc
+if MAKEROOT6
+  pcmdir = $(libdir)
+  nobase_dist_pcm_DATA = \
+    TpcHit_Dict_rdict.pcm
+else
+  ROOT5_IO_DICTS = \
+    TpcDefs_Dict.cc
+
+  ROOT5_DICTS = \
+    TPCClusterizer_Dict.cc 
+endif
+
 # sources for tpc library
 libtpc_la_SOURCES = \
-  TpcDefs.cc \
-  TpcDefs_Dict.cc 
+  $(ROOT5_DICTS) \
+  TPCClusterizer.cc
 
 libtpc_la_LIBADD = \
+  libtpc_io.la \
   -lfun4all \
-  -ltrack_util \
-  -ltrack_io
+  -lg4detectors \
+  -lSpectrum \
+  -lg4tpc
 
 # sources for io library
 libtpc_io_la_SOURCES = \
-  TpcHit.cc \
-  TpcHit_Dict.cc
+  $(ROOTDICTS) \
+  $(ROOT5_IO_DICTS) \
+  TpcDefs.cc \
+  TpcHit.cc
 
 libtpc_io_la_LIBADD = \
-  libtpc.la \
-  -lfun4all \
-  -ltrack_util \
-  -ltrack_io 
-
+  -ltrack_io \
+  -lg4detectors_io \
+  -ltrackbase_historic_io
 
 
 # Rule for generating table CINT dictionaries.
 %_Dict.cc: %.h %LinkDef.h
 	rootcint -f $@ @CINTDEFS@  -c $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $^
 
-
-##############################################
-# please add new classes in alphabetical order
-
-pkginclude_HEADERS = \
-  TpcDefs.h \
-  TpcHit.h
-
-
+#just to get the dependency
+%_Dict_rdict.pcm: %_Dict.cc ;
 
 ################################################
 # linking tests

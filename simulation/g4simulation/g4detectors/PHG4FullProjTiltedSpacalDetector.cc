@@ -14,10 +14,11 @@
 #include <g4main/PHG4PhenixDetector.h>
 #include <g4main/PHG4Utils.h>
 
+#include <g4gdml/PHG4GDMLConfig.hh>
+
 #include <phool/PHCompositeNode.h>
 #include <phool/PHIODataNode.h>
 #include <phool/getClass.h>
-#include <g4gdml/PHG4GDMLConfig.hh>
 
 #include <Geant4/G4Box.hh>
 #include <Geant4/G4Colour.hh>
@@ -39,9 +40,12 @@
 #include <Geant4/G4Vector3D.hh>
 #include <Geant4/G4VisAttributes.hh>
 
-#include <algorithm>
+#include <TSystem.h>
+
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/sign.hpp>
+
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <functional>
@@ -69,7 +73,6 @@ PHG4FullProjTiltedSpacalDetector::PHG4FullProjTiltedSpacalDetector(PHCompositeNo
     exit(1);
   }
   assert(parameters);
-  assert(get_geom_v3());  // conversion check
 
   assert(parameters);
   get_geom_v3()->ImportParameters(*parameters);
@@ -81,7 +84,6 @@ PHG4FullProjTiltedSpacalDetector::PHG4FullProjTiltedSpacalDetector(PHCompositeNo
 //_______________________________________________________________
 void PHG4FullProjTiltedSpacalDetector::Construct(G4LogicalVolume* logicWorld)
 {
-  assert(get_geom_v3());
 
   if (get_geom_v3()->get_construction_verbose() >= 1)
   {
@@ -101,8 +103,11 @@ void PHG4FullProjTiltedSpacalDetector::Construct(G4LogicalVolume* logicWorld)
 std::pair<G4LogicalVolume*, G4Transform3D>
 PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
 {
-  assert(get_geom_v3());
-  assert(get_geom_v3()->get_azimuthal_n_sec() > 4);
+  if (! (get_geom_v3()->get_azimuthal_n_sec() > 4))
+  {
+    cout << "azimuthal n sec <= 4: " << get_geom_v3()->get_azimuthal_n_sec() << endl;
+    gSystem->Exit(1);
+  }
 
   // basic tilt geometry
   const G4double half_chord_backend =
@@ -137,7 +142,11 @@ PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
   assert(phi_bin_in_sec >= 1);
   const G4double block_azimuth_angle = (edge2_tilt_angle - edge1_tilt_angle) / phi_bin_in_sec;
   assert(block_azimuth_angle > 0);
-  assert(fabs(block_azimuth_angle - M_PI * 2 / get_geom_v3()->get_azimuthal_n_sec() / phi_bin_in_sec) < M_PI * numeric_limits<G4double>::epsilon());
+  if (!(fabs(block_azimuth_angle - M_PI * 2 / get_geom_v3()->get_azimuthal_n_sec() / phi_bin_in_sec) < M_PI * numeric_limits<G4double>::epsilon()))
+  {
+    cout << "angle/nsec out of range: " <<  M_PI * numeric_limits<G4double>::epsilon() << endl;
+    gSystem->Exit(1);
+  }
   const G4double block_edge1_half_width = enclosure_half_height_half_width - (get_geom_v3()->get_sidewall_thickness() * cm + get_geom_v3()->get_sidewall_outer_torr() * cm + 2.0 * get_geom_v3()->get_assembly_spacing() * cm) / cos(edge1_tilt_angle);
   const G4double block_edge2_half_width = enclosure_half_height_half_width - (get_geom_v3()->get_sidewall_thickness() * cm + get_geom_v3()->get_sidewall_outer_torr() * cm + 2.0 * get_geom_v3()->get_assembly_spacing() * cm) / cos(edge2_tilt_angle);
   G4double block_width_ratio = 0;
@@ -227,7 +236,11 @@ PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
          << "\t fabs(block_x_edge1 - (-block_edge2_half_width)) = " << fabs(block_x_edge1 - (-block_edge2_half_width)) << endl
          << "\t get_geom_v3()->get_assembly_spacing() * cm = " << get_geom_v3()->get_assembly_spacing() * cm << endl;
   }
-  assert(fabs(block_x_edge1 - (-block_edge2_half_width)) < get_geom_v3()->get_assembly_spacing() * cm);  // closure check
+  if (!(fabs(block_x_edge1 - (-block_edge2_half_width)) < get_geom_v3()->get_assembly_spacing() * cm))  // closure check
+  {
+    cout << "closure check failed: " << fabs(block_x_edge1 - (-block_edge2_half_width)) << endl;
+    gSystem->Exit(1);
+  }
 
   if (Verbosity())
   {
@@ -347,7 +360,7 @@ PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
       G4Transform3D wall_trans = G4TranslateZ3D(val.second);
 
       G4PVPlacement* wall_phys = new G4PVPlacement(wall_trans, wall_logic,
-                                                   G4String(GetName().c_str()) + G4String("_EndWall_") + to_string(val.first), sec_logic,
+                                                   G4String(GetName()) + G4String("_EndWall_") + to_string(val.first), sec_logic,
                                                    false, val.first, OverlapCheck());
 
       calo_vol[wall_phys] = val.first;
@@ -411,7 +424,7 @@ PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
           G4TranslateX3D(-sign_azimuth * (get_geom_v3()->get_sidewall_thickness() * cm / 2.0 + get_geom_v3()->get_sidewall_outer_torr() * cm));
 
       G4PVPlacement* wall_phys = new G4PVPlacement(wall_trans, wall_logic,
-                                                   G4String(GetName().c_str()) + G4String("_SideWall_") + to_string(val.first), sec_logic,
+                                                   G4String(GetName()) + G4String("_SideWall_") + to_string(val.first), sec_logic,
                                                    false, val.first, OverlapCheck());
 
       calo_vol[wall_phys] = val.first;
@@ -460,7 +473,7 @@ PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
             G4TranslateZ3D(sign_z * (get_geom_v3()->get_length() * cm / 4));
 
         G4PVPlacement* wall_phys = new G4PVPlacement(wall_trans, wall_logic,
-                                                     G4String(GetName().c_str()) + G4String("_Divider_") + to_string(ID), sec_logic,
+                                                     G4String(GetName()) + G4String("_Divider_") + to_string(ID), sec_logic,
                                                      false, ID, OverlapCheck());
 
         calo_vol[wall_phys] = ID;
@@ -504,7 +517,7 @@ PHG4FullProjTiltedSpacalDetector::Construct_AzimuthalSeg()
     const bool overlapcheck_block = OverlapCheck() and (get_geom_v3()->get_construction_verbose() >= 2);
 
     G4PVPlacement* block_phys = new G4PVPlacement(block_trans, LV_tower,
-                                                  G4String(GetName().c_str()) + G4String("_Tower_") + to_string(g_tower.id), sec_logic, false,
+                                                  G4String(GetName()) + G4String("_Tower_") + to_string(g_tower.id), sec_logic, false,
                                                   g_tower.id, overlapcheck_block);
     block_vol[block_phys] = g_tower.id;
     assert(gdml_config);
@@ -547,7 +560,6 @@ int PHG4FullProjTiltedSpacalDetector::Construct_Fibers_SameLengthFiberPerTower(
     const PHG4FullProjTiltedSpacalDetector::SpacalGeom_t::geom_tower& g_tower,
     G4LogicalVolume* LV_tower)
 {
-  assert(get_geom_v3());
 
   // construct fibers
 
@@ -662,7 +674,7 @@ int PHG4FullProjTiltedSpacalDetector::Construct_Fibers_SameLengthFiberPerTower(
 
     const bool overlapcheck_fiber = OverlapCheck() and (get_geom_v3()->get_construction_verbose() >= 3);
     G4PVPlacement* fiber_physi = new G4PVPlacement(fiber_place, fiber_logic,
-                                                   G4String(name.str().c_str()), LV_tower, false, fiber_ID,
+                                                   G4String(name.str()), LV_tower, false, fiber_ID,
                                                    overlapcheck_fiber);
     fiber_vol[fiber_physi] = fiber_ID;
     assert(gdml_config);
@@ -686,7 +698,6 @@ int PHG4FullProjTiltedSpacalDetector::Construct_Fibers(
     const PHG4FullProjTiltedSpacalDetector::SpacalGeom_t::geom_tower& g_tower,
     G4LogicalVolume* LV_tower)
 {
-  assert(get_geom_v3());
 
   G4Vector3D v_zshift = G4Vector3D(tan(g_tower.pTheta) * cos(g_tower.pPhi),
                                    tan(g_tower.pTheta) * sin(g_tower.pPhi), 1) *
@@ -764,7 +775,7 @@ int PHG4FullProjTiltedSpacalDetector::Construct_Fibers(
 
       const bool overlapcheck_fiber = OverlapCheck() and (get_geom_v3()->get_construction_verbose() >= 3);
       G4PVPlacement* fiber_physi = new G4PVPlacement(fiber_place,
-                                                     fiber_logic, G4String(name.str().c_str()), LV_tower, false,
+                                                     fiber_logic, G4String(name.str()), LV_tower, false,
                                                      fiber_ID, overlapcheck_fiber);
       fiber_vol[fiber_physi] = fiber_ID;
       assert(gdml_config);
@@ -787,7 +798,6 @@ G4LogicalVolume*
 PHG4FullProjTiltedSpacalDetector::Construct_Tower(
     const PHG4FullProjTiltedSpacalDetector::SpacalGeom_t::geom_tower& g_tower)
 {
-  assert(get_geom_v3());
 
   std::stringstream sout;
   sout << "_" << g_tower.id;
@@ -796,7 +806,7 @@ PHG4FullProjTiltedSpacalDetector::Construct_Tower(
   //Processed PostionSeeds 1 from 1 1
 
   G4Trap* block_solid = new G4Trap(
-      /*const G4String& pName*/ G4String(GetName().c_str()) + sTowerID,
+      /*const G4String& pName*/ G4String(GetName()) + sTowerID,
       g_tower.pDz * cm,                                         // G4double pDz,
       g_tower.pTheta * rad, g_tower.pPhi * rad,                 // G4double pTheta, G4double pPhi,
       g_tower.pDy1 * cm, g_tower.pDx1 * cm, g_tower.pDx2 * cm,  // G4double pDy1, G4double pDx1, G4double pDx2,
@@ -898,7 +908,7 @@ PHG4FullProjTiltedSpacalDetector::Construct_LightGuide(
                                (-g_tower.NSubtowerY + 1. + 2 * index_y) / (double) (g_tower.NSubtowerY);
 
   G4VSolid* block_solid = new G4Trap(
-      /*const G4String& pName*/ G4String(GetName().c_str()) + sTowerID,
+      /*const G4String& pName*/ G4String(GetName()) + sTowerID,
       0.5 * g_tower.LightguideHeight * cm,  // G4double pDz,
       0 * rad, 0 * rad,                     // G4double pTheta, G4double pPhi,
       g_tower.LightguideTaperRatio * lg_pDy1 * cm,
