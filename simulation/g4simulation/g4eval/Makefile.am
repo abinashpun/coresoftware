@@ -17,9 +17,14 @@ libg4eval_la_LDFLAGS = \
   -L$(OFFLINE_MAIN)/lib
 
 libg4eval_la_LIBADD = \
+  -lcalo_io \
   -lfun4all \
+  -lg4detectors_io \
+  -lg4jets_io \
+  -lg4vertex_io \
   -ltrackbase_historic_io \
-  -lg4dst 
+  -ltrack_io \
+  -lphg4hit
 
 pkginclude_HEADERS = \
   BaseTruthEval.h \
@@ -37,6 +42,7 @@ pkginclude_HEADERS = \
   PHG4DSTReader.h \
   SvtxEvalStack.h \
   SvtxEvaluator.h \
+  TrkrEvaluator.h \
   SvtxHitEval.h \
   SvtxClusterEval.h \
   SvtxTrackEval.h \
@@ -62,6 +68,7 @@ if ! MAKEROOT6
   SvtxTrackEval_Dict.cc \
   SvtxVertexEval_Dict.cc \
   SvtxEvaluator_Dict.cc \
+  TrkrEvaluator_Dict.cc \
   MomentumEvaluator_Dict.cc \
   PHG4DstCompressReco_Dict.cc
 endif
@@ -86,6 +93,7 @@ libg4eval_la_SOURCES = \
   SvtxTrackEval.cc \
   SvtxVertexEval.cc \
   SvtxEvaluator.cc \
+  TrkrEvaluator.cc \
   MomentumEvaluator.cc \
   PHG4DstCompressReco.cc 
 

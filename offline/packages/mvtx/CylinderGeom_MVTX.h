@@ -1,20 +1,22 @@
-#ifndef PHG4CylinderGeomMVTX_H__
-#define PHG4CylinderGeomMVTX_H__
+#ifndef CylinderGeomMVTX_H__
+#define CylinderGeomMVTX_H__
 
 #include <g4detectors/PHG4CylinderGeom.h>
 
 #include <phool/phool.h>
-#include <cmath>
-#include "TVector3.h"
 
-class PHG4CylinderGeom_MVTX : public PHG4CylinderGeom
+#include <TVector3.h>
+
+#include <cmath>
+
+class CylinderGeom_MVTX : public PHG4CylinderGeom
 {
  public:
-  PHG4CylinderGeom_MVTX(int layer, int stave_type, int in_Nstaves, double in_layer_nominal_radius, double in_phistep, double in_phitilt, double in_pixel_x, double in_pixel_z, double in_pixel_thickness);
+  CylinderGeom_MVTX(int layer, int stave_type, int in_Nstaves, double in_layer_nominal_radius, double in_phistep, double in_phitilt, double in_pixel_x, double in_pixel_z, double in_pixel_thickness);
 
   //! default ctor to allow ROOT stream of this class. Implemented using c++11 feature of delegating constructors
-  PHG4CylinderGeom_MVTX()
-    : PHG4CylinderGeom_MVTX(
+  CylinderGeom_MVTX()
+    : CylinderGeom_MVTX(
           /*int layer*/ 0,
           /*int stave_type*/ 0,
           /*int in_Nstaves*/ 0,
@@ -27,7 +29,7 @@ class PHG4CylinderGeom_MVTX : public PHG4CylinderGeom
   {
   }
 
-  virtual ~PHG4CylinderGeom_MVTX() {}
+  virtual ~CylinderGeom_MVTX() {}
 
   void identify(std::ostream& os = std::cout) const;
   TVector3 get_local_from_world_coords(int stave, int half_stave, int module, int chip, TVector3 world_location);
@@ -101,7 +103,7 @@ class PHG4CylinderGeom_MVTX : public PHG4CylinderGeom
   double pixel_z;
   double pixel_thickness;
 
-  ClassDef(PHG4CylinderGeom_MVTX, 1)
+  ClassDef(CylinderGeom_MVTX, 1)
 };
 
 #endif
